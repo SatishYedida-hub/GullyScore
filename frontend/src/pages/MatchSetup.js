@@ -1,7 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { getMatchById, setupMatch } from '../services/matchService';
+import {
+  getMatchById,
+  setupMatch,
+  setupInnings2,
+} from '../services/matchService';
 import { getErrorMessage } from '../services/api';
 
 function MatchSetup() {
@@ -35,6 +39,16 @@ function MatchSetup() {
     fetchMatch();
   }, [fetchMatch]);
 
+  const isInnings2 = match?.status === 'innings-break';
+
+  const battingTeamKey = useMemo(() => {
+    if (!match) return 'teamA';
+    if (isInnings2) {
+      return match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+    }
+    return match.battingTeam;
+  }, [match, isInnings2]);
+
   if (loading) {
     return (
       <section className="page">
@@ -55,12 +69,14 @@ function MatchSetup() {
 
   if (!match) return null;
 
-  const battingTeamName = match.battingTeam === 'teamA' ? match.teamA : match.teamB;
-  const bowlingTeamName = match.battingTeam === 'teamA' ? match.teamB : match.teamA;
+  const battingTeamName =
+    battingTeamKey === 'teamA' ? match.teamA : match.teamB;
+  const bowlingTeamName =
+    battingTeamKey === 'teamA' ? match.teamB : match.teamA;
   const battingPlayers =
-    match.battingTeam === 'teamA' ? match.teamAPlayers : match.teamBPlayers;
+    battingTeamKey === 'teamA' ? match.teamAPlayers : match.teamBPlayers;
   const bowlingPlayers =
-    match.battingTeam === 'teamA' ? match.teamBPlayers : match.teamAPlayers;
+    battingTeamKey === 'teamA' ? match.teamBPlayers : match.teamAPlayers;
 
   if (!battingPlayers.length || !bowlingPlayers.length) {
     return (
@@ -73,6 +89,8 @@ function MatchSetup() {
       </section>
     );
   }
+
+  const firstInnings = match.innings && match.innings[0];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,7 +107,8 @@ function MatchSetup() {
 
     try {
       setSubmitting(true);
-      await setupMatch(id, { striker, nonStriker, bowler });
+      const call = isInnings2 ? setupInnings2 : setupMatch;
+      await call(id, { striker, nonStriker, bowler });
       navigate(`/matches/${id}/live`);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -100,11 +119,30 @@ function MatchSetup() {
 
   return (
     <section className="page match-setup">
-      <h1>Match Setup</h1>
+      <h1>{isInnings2 ? 'Second Innings Setup' : 'Match Setup'}</h1>
       <p className="muted">
         <strong>{match.teamA}</strong> vs <strong>{match.teamB}</strong> —{' '}
-        {match.overs} overs. <strong>{battingTeamName}</strong> to bat first.
+        {match.overs} overs. <strong>{battingTeamName}</strong> to bat
+        {isInnings2 ? ' now.' : ' first.'}
       </p>
+
+      {isInnings2 && firstInnings && (
+        <div className="target-banner">
+          <div>
+            <span className="target-label">First innings</span>
+            <span className="target-value">
+              {firstInnings.score.runs}/{firstInnings.score.wickets}{' '}
+              ({(firstInnings.score.overs ?? 0).toFixed(1)})
+            </span>
+          </div>
+          <div>
+            <span className="target-label">Target</span>
+            <span className="target-value">
+              {match.target} runs from {match.overs} overs
+            </span>
+          </div>
+        </div>
+      )}
 
       <form className="form" onSubmit={handleSubmit}>
         <label className="form-field">
@@ -153,7 +191,7 @@ function MatchSetup() {
 
         <div className="form-actions">
           <button type="submit" className="btn primary" disabled={submitting}>
-            {submitting ? 'Starting…' : 'Start Innings'}
+            {submitting ? 'Starting…' : isInnings2 ? 'Start Chase' : 'Start Innings'}
           </button>
         </div>
 

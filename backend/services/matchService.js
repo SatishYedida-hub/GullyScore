@@ -2,15 +2,29 @@ const mongoose = require('mongoose');
 
 const Match = require('../models/Match');
 const Team = require('../models/Team');
-const { ballsToOvers, isExtra, BALLS_PER_OVER } = require('../utils/cricket');
+const { ballsToOvers, BALLS_PER_OVER } = require('../utils/cricket');
 
 const MAX_WICKETS = 10;
 
-const getBattingTeamPlayers = (match) =>
-  match.battingTeam === 'teamA' ? match.teamAPlayers : match.teamBPlayers;
+const teamNameOf = (match, key) =>
+  key === 'teamA' ? match.teamA : match.teamB;
 
-const getBowlingTeamPlayers = (match) =>
-  match.battingTeam === 'teamA' ? match.teamBPlayers : match.teamAPlayers;
+const currentInnings = (match) => {
+  if (!match.innings || match.innings.length === 0) return null;
+  return match.innings[match.innings.length - 1];
+};
+
+const getBattingTeamPlayers = (match) => {
+  const inn = currentInnings(match);
+  const team = inn ? inn.battingTeam : match.battingTeam;
+  return team === 'teamA' ? match.teamAPlayers : match.teamBPlayers;
+};
+
+const getBowlingTeamPlayers = (match) => {
+  const inn = currentInnings(match);
+  const team = inn ? inn.battingTeam : match.battingTeam;
+  return team === 'teamA' ? match.teamBPlayers : match.teamAPlayers;
+};
 
 const findMissingTeams = async (names) => {
   const existing = await Team.find({ name: { $in: names } }).select('name');
@@ -34,56 +48,106 @@ const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
   return match.save();
 };
 
-const getAllMatches = async () => {
-  return Match.find().sort({ createdAt: -1 });
-};
+const getAllMatches = async () => Match.find().sort({ createdAt: -1 });
 
 const getMatchById = async (id) => {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return null;
-  }
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   return Match.findById(id);
 };
 
-const setupMatch = async (match, { striker, nonStriker, bowler }) => {
-  match.batsmen = [
-    { name: striker, order: 1 },
-    { name: nonStriker, order: 2 },
-  ];
-  match.bowlers = [{ name: bowler }];
-  match.striker = striker;
-  match.nonStriker = nonStriker;
-  match.currentBowler = bowler;
-  match.lastOverBowler = null;
-  match.status = 'live';
-  match.currentOverEvents = [];
+const loadForWrite = async (id) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
+  return Match.findById(id).select('+history');
+};
+
+const HISTORY_LIMIT = 30;
+
+const snapshotMatch = (match) => ({
+  innings: match.toObject().innings,
+  status: match.status,
+  target: match.target,
+  result: match.result,
+});
+
+const pushHistory = (match, kind) => {
+  if (!match.history) match.history = [];
+  match.history.push({ kind, snapshot: snapshotMatch(match), at: new Date() });
+  if (match.history.length > HISTORY_LIMIT) {
+    match.history.splice(0, match.history.length - HISTORY_LIMIT);
+  }
+};
+
+const undoLastAction = async (match) => {
+  if (!match.history || match.history.length === 0) {
+    const err = new Error('Nothing to undo');
+    err.status = 400;
+    throw err;
+  }
+  const entry = match.history.pop();
+  const { snapshot } = entry;
+  match.innings = snapshot.innings;
+  match.status = snapshot.status;
+  match.target = snapshot.target !== undefined ? snapshot.target : null;
+  match.result = snapshot.result || '';
   return match.save();
 };
 
-const findBatsmanEntry = (match, name) =>
-  match.batsmen.find((b) => b.name === name);
+const buildInningsPayload = (number, battingTeam, striker, nonStriker, bowler) => ({
+  number,
+  battingTeam,
+  batsmen: [
+    { name: striker, order: 1 },
+    { name: nonStriker, order: 2 },
+  ],
+  bowlers: [{ name: bowler }],
+  striker,
+  nonStriker,
+  currentBowler: bowler,
+  lastOverBowler: null,
+  currentOverEvents: [],
+  completed: false,
+});
 
-const findBowlerEntry = (match, name) =>
-  match.bowlers.find((b) => b.name === name);
+const setupMatch = async (match, { striker, nonStriker, bowler }) => {
+  match.innings = [];
+  match.innings.push(
+    buildInningsPayload(1, match.battingTeam, striker, nonStriker, bowler)
+  );
+  match.status = 'live';
+  return match.save();
+};
 
-const ensureBatsmanEntry = (match, name) => {
-  let entry = findBatsmanEntry(match, name);
+const setupInnings2 = async (match, { striker, nonStriker, bowler }) => {
+  const secondBattingTeam =
+    match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+  match.innings.push(
+    buildInningsPayload(2, secondBattingTeam, striker, nonStriker, bowler)
+  );
+  match.status = 'live';
+  return match.save();
+};
+
+const findBatsmanEntry = (inn, name) => inn.batsmen.find((b) => b.name === name);
+const findBowlerEntry = (inn, name) => inn.bowlers.find((b) => b.name === name);
+
+const ensureBatsmanEntry = (inn, name) => {
+  let entry = findBatsmanEntry(inn, name);
   if (!entry) {
-    const maxOrder = match.batsmen.reduce(
+    const maxOrder = inn.batsmen.reduce(
       (m, b) => Math.max(m, b.order || 0),
       0
     );
-    match.batsmen.push({ name, order: maxOrder + 1 });
-    entry = match.batsmen[match.batsmen.length - 1];
+    inn.batsmen.push({ name, order: maxOrder + 1 });
+    entry = inn.batsmen[inn.batsmen.length - 1];
   }
   return entry;
 };
 
-const ensureBowlerEntry = (match, name) => {
-  let entry = findBowlerEntry(match, name);
+const ensureBowlerEntry = (inn, name) => {
+  let entry = findBowlerEntry(inn, name);
   if (!entry) {
-    match.bowlers.push({ name });
-    entry = match.bowlers[match.bowlers.length - 1];
+    inn.bowlers.push({ name });
+    entry = inn.bowlers[inn.bowlers.length - 1];
   }
   return entry;
 };
@@ -96,9 +160,31 @@ const buildLabel = ({ wicket, extra, runs }) => {
   return String(runs);
 };
 
+const computeResult = (match, inn) => {
+  const firstInn = match.innings[0];
+  if (inn.number === 1) return '';
+
+  const target = match.target;
+  const wicketsRemaining = MAX_WICKETS - inn.score.wickets;
+  const battingName = teamNameOf(match, inn.battingTeam);
+  const otherName = teamNameOf(match, firstInn.battingTeam);
+
+  if (target && inn.score.runs >= target) {
+    return `${battingName} won by ${wicketsRemaining} wicket${
+      wicketsRemaining === 1 ? '' : 's'
+    }`;
+  }
+
+  const diff = firstInn.score.runs - inn.score.runs;
+  if (diff === 0) return 'Match tied';
+  return `${otherName} won by ${diff} run${diff === 1 ? '' : 's'}`;
+};
+
 const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
-  const striker = findBatsmanEntry(match, match.striker);
-  const bowler = findBowlerEntry(match, match.currentBowler);
+  pushHistory(match, 'score');
+  const inn = currentInnings(match);
+  const striker = findBatsmanEntry(inn, inn.striker);
+  const bowler = findBowlerEntry(inn, inn.currentBowler);
 
   const isWide = extra === 'wide';
   const isNoBall = extra === 'no-ball';
@@ -107,13 +193,13 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
   const extraPenalty = isWide || isNoBall ? 1 : 0;
   const runsForTeam = runs + extraPenalty;
 
-  match.score.runs = (match.score.runs || 0) + runsForTeam;
+  inn.score.runs = (inn.score.runs || 0) + runsForTeam;
 
   if (isWide) {
-    match.extras.wides = (match.extras.wides || 0) + 1 + runs;
+    inn.extras.wides = (inn.extras.wides || 0) + 1 + runs;
   }
   if (isNoBall) {
-    match.extras.noBalls = (match.extras.noBalls || 0) + 1;
+    inn.extras.noBalls = (inn.extras.noBalls || 0) + 1;
   }
 
   bowler.runs = (bowler.runs || 0) + runsForTeam;
@@ -136,12 +222,12 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
   if (wicket) {
     striker.out = true;
     striker.howOut = howOut || 'out';
-    match.score.wickets = (match.score.wickets || 0) + 1;
+    inn.score.wickets = (inn.score.wickets || 0) + 1;
     bowler.wickets = (bowler.wickets || 0) + 1;
-    match.striker = null;
+    inn.striker = null;
   }
 
-  match.currentOverEvents.push({
+  inn.currentOverEvents.push({
     label: buildLabel({ wicket, extra, runs }),
     runs,
     extra: extra || null,
@@ -149,14 +235,14 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
   });
 
   if (!wicket && runs % 2 === 1) {
-    const tmp = match.striker;
-    match.striker = match.nonStriker;
-    match.nonStriker = tmp;
+    const tmp = inn.striker;
+    inn.striker = inn.nonStriker;
+    inn.nonStriker = tmp;
   }
 
   if (isLegalBall) {
-    match.score.balls = (match.score.balls || 0) + 1;
-    match.score.overs = ballsToOvers(match.score.balls);
+    inn.score.balls = (inn.score.balls || 0) + 1;
+    inn.score.overs = ballsToOvers(inn.score.balls);
 
     if (bowler.balls % BALLS_PER_OVER === 0) {
       if (bowler.runsInCurrentOver === 0) {
@@ -164,50 +250,59 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
       }
       bowler.runsInCurrentOver = 0;
 
-      const tmpS = match.striker;
-      match.striker = match.nonStriker;
-      match.nonStriker = tmpS;
+      const tmpS = inn.striker;
+      inn.striker = inn.nonStriker;
+      inn.nonStriker = tmpS;
 
-      match.lastOverBowler = match.currentBowler;
-      match.currentBowler = null;
-      match.currentOverEvents = [];
+      inn.lastOverBowler = inn.currentBowler;
+      inn.currentBowler = null;
+      inn.currentOverEvents = [];
     }
   }
 
-  const allOut = match.score.wickets >= MAX_WICKETS;
+  const allOut = inn.score.wickets >= MAX_WICKETS;
   const oversDone =
     typeof match.overs === 'number' &&
-    match.score.balls >= match.overs * BALLS_PER_OVER;
+    inn.score.balls >= match.overs * BALLS_PER_OVER;
+  const targetReached =
+    inn.number === 2 && match.target && inn.score.runs >= match.target;
 
-  if (allOut || oversDone) {
+  if (inn.number === 1 && (allOut || oversDone)) {
+    inn.completed = true;
+    inn.striker = null;
+    inn.nonStriker = null;
+    inn.currentBowler = null;
+    match.target = inn.score.runs + 1;
+    match.status = 'innings-break';
+  } else if (inn.number === 2 && (targetReached || allOut || oversDone)) {
+    inn.completed = true;
+    inn.striker = null;
+    inn.nonStriker = null;
+    inn.currentBowler = null;
     match.status = 'completed';
-    match.result = allOut
-      ? `${teamNameOf(match, match.battingTeam)} all out for ${match.score.runs}`
-      : `${teamNameOf(match, match.battingTeam)} ${match.score.runs}/${match.score.wickets} in ${match.score.overs} overs`;
-    match.striker = null;
-    match.nonStriker = null;
-    match.currentBowler = null;
+    match.result = computeResult(match, inn);
   }
 
   return match.save();
 };
 
-const teamNameOf = (match, key) =>
-  key === 'teamA' ? match.teamA : match.teamB;
-
 const setNewBatsman = async (match, name) => {
-  ensureBatsmanEntry(match, name);
-  if (!match.striker) {
-    match.striker = name;
-  } else if (!match.nonStriker) {
-    match.nonStriker = name;
+  pushHistory(match, 'new-batsman');
+  const inn = currentInnings(match);
+  ensureBatsmanEntry(inn, name);
+  if (!inn.striker) {
+    inn.striker = name;
+  } else if (!inn.nonStriker) {
+    inn.nonStriker = name;
   }
   return match.save();
 };
 
 const setNewBowler = async (match, name) => {
-  ensureBowlerEntry(match, name);
-  match.currentBowler = name;
+  pushHistory(match, 'new-bowler');
+  const inn = currentInnings(match);
+  ensureBowlerEntry(inn, name);
+  inn.currentBowler = name;
   return match.save();
 };
 
@@ -216,11 +311,15 @@ module.exports = {
   createMatch,
   getAllMatches,
   getMatchById,
+  loadForWrite,
   setupMatch,
+  setupInnings2,
   applyScoreUpdate,
   setNewBatsman,
   setNewBowler,
+  undoLastAction,
   getBattingTeamPlayers,
   getBowlingTeamPlayers,
+  currentInnings,
   MAX_WICKETS,
 };

@@ -20,12 +20,119 @@ const economy = (runs = 0, balls = 0) => {
   return ((runs * 6) / balls).toFixed(2);
 };
 
-const renderStatus = (b, match) => {
+const renderStatus = (b, inn) => {
   if (b.out) return b.howOut || 'out';
-  if (b.name === match.striker) return 'not out *';
-  if (b.name === match.nonStriker) return 'not out';
+  if (b.name === inn.striker) return 'not out *';
+  if (b.name === inn.nonStriker) return 'not out';
   return 'did not bat';
 };
+
+function InningsBlock({ inn, match }) {
+  const battingTeamName =
+    inn.battingTeam === 'teamA' ? match.teamA : match.teamB;
+  const bowlingTeamName =
+    inn.battingTeam === 'teamA' ? match.teamB : match.teamA;
+
+  const sortedBatsmen = [...(inn.batsmen || [])].sort(
+    (a, b) => (a.order || 0) - (b.order || 0)
+  );
+
+  const extras = inn.extras || { wides: 0, noBalls: 0 };
+  const totalExtras = (extras.wides || 0) + (extras.noBalls || 0);
+
+  return (
+    <div className="innings-block">
+      <header className="innings-header">
+        <h2>
+          Innings {inn.number} · {battingTeamName}
+        </h2>
+        <div className="innings-score">
+          <strong>
+            {inn.score.runs}/{inn.score.wickets}
+          </strong>{' '}
+          <span className="muted">
+            ({(inn.score.overs ?? 0).toFixed(1)} / {match.overs} ov)
+          </span>
+        </div>
+      </header>
+
+      <div className="panel">
+        <h3 className="panel-title">Batting — {battingTeamName}</h3>
+        <div className="table-scroll">
+          <table className="stats-table full">
+            <thead>
+              <tr>
+                <th>Batter</th>
+                <th>Status</th>
+                <th>R</th>
+                <th>B</th>
+                <th>4s</th>
+                <th>6s</th>
+                <th>SR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedBatsmen.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="muted">No batting data yet</td>
+                </tr>
+              )}
+              {sortedBatsmen.map((b) => (
+                <tr key={b.name}>
+                  <td>{b.name}</td>
+                  <td className="muted small">{renderStatus(b, inn)}</td>
+                  <td>{b.runs}</td>
+                  <td>{b.balls}</td>
+                  <td>{b.fours}</td>
+                  <td>{b.sixes}</td>
+                  <td>{strikeRate(b.runs, b.balls)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="muted small">
+          Extras: {totalExtras} (wd {extras.wides || 0}, nb {extras.noBalls || 0})
+        </p>
+      </div>
+
+      <div className="panel">
+        <h3 className="panel-title">Bowling — {bowlingTeamName}</h3>
+        <div className="table-scroll">
+          <table className="stats-table full">
+            <thead>
+              <tr>
+                <th>Bowler</th>
+                <th>O</th>
+                <th>M</th>
+                <th>R</th>
+                <th>W</th>
+                <th>Econ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(inn.bowlers || []).length === 0 && (
+                <tr>
+                  <td colSpan="6" className="muted">No bowling data yet</td>
+                </tr>
+              )}
+              {(inn.bowlers || []).map((bw) => (
+                <tr key={bw.name}>
+                  <td>{bw.name}</td>
+                  <td>{formatBowlerOvers(bw.balls)}</td>
+                  <td>{bw.maidens || 0}</td>
+                  <td>{bw.runs || 0}</td>
+                  <td>{bw.wickets || 0}</td>
+                  <td>{economy(bw.runs, bw.balls)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Scorecard() {
   const { id } = useParams();
@@ -66,18 +173,6 @@ function Scorecard() {
     );
   }
 
-  const battingTeamName =
-    match.battingTeam === 'teamA' ? match.teamA : match.teamB;
-  const bowlingTeamName =
-    match.battingTeam === 'teamA' ? match.teamB : match.teamA;
-
-  const sortedBatsmen = [...(match.batsmen || [])].sort(
-    (a, b) => (a.order || 0) - (b.order || 0)
-  );
-
-  const extras = match.extras || { wides: 0, noBalls: 0 };
-  const totalExtras = (extras.wides || 0) + (extras.noBalls || 0);
-
   return (
     <section className="page scorecard-page">
       <header className="score-header">
@@ -85,105 +180,26 @@ function Scorecard() {
           <h1 className="teams-title">
             {match.teamA} <span className="vs">vs</span> {match.teamB}
           </h1>
-          <p className="match-meta">
-            {match.overs} overs · {battingTeamName} batting
-          </p>
+          <p className="match-meta">{match.overs} overs match</p>
         </div>
         <span className={`badge badge-${match.status}`}>{match.status}</span>
       </header>
 
-      <div className="scoreboard-card compact">
-        <div className="score-main">
-          <span className="score-runs">{match.score?.runs ?? 0}</span>
-          <span className="score-slash">/</span>
-          <span className="score-wickets">{match.score?.wickets ?? 0}</span>
-        </div>
-        <div className="score-overs">
-          <span className="score-overs-value">
-            {(match.score?.overs ?? 0).toFixed(1)}
-          </span>
-          <span className="score-overs-label">overs</span>
-        </div>
-      </div>
+      {match.target && (
+        <p className="muted small">Target: {match.target}</p>
+      )}
 
       {match.result && (
         <p className="form-message success">{match.result}</p>
       )}
 
-      <div className="panel">
-        <h3 className="panel-title">Batting — {battingTeamName}</h3>
-        <div className="table-scroll">
-          <table className="stats-table full">
-            <thead>
-              <tr>
-                <th>Batter</th>
-                <th>Status</th>
-                <th>R</th>
-                <th>B</th>
-                <th>4s</th>
-                <th>6s</th>
-                <th>SR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedBatsmen.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="muted">No batting data yet</td>
-                </tr>
-              )}
-              {sortedBatsmen.map((b) => (
-                <tr key={b.name}>
-                  <td>{b.name}</td>
-                  <td className="muted small">{renderStatus(b, match)}</td>
-                  <td>{b.runs}</td>
-                  <td>{b.balls}</td>
-                  <td>{b.fours}</td>
-                  <td>{b.sixes}</td>
-                  <td>{strikeRate(b.runs, b.balls)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="muted small">
-          Extras: {totalExtras} (wd {extras.wides || 0}, nb {extras.noBalls || 0})
-        </p>
-      </div>
+      {(!match.innings || match.innings.length === 0) && (
+        <p className="muted">Match has not started yet.</p>
+      )}
 
-      <div className="panel">
-        <h3 className="panel-title">Bowling — {bowlingTeamName}</h3>
-        <div className="table-scroll">
-          <table className="stats-table full">
-            <thead>
-              <tr>
-                <th>Bowler</th>
-                <th>O</th>
-                <th>M</th>
-                <th>R</th>
-                <th>W</th>
-                <th>Econ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(match.bowlers || []).length === 0 && (
-                <tr>
-                  <td colSpan="6" className="muted">No bowling data yet</td>
-                </tr>
-              )}
-              {(match.bowlers || []).map((bw) => (
-                <tr key={bw.name}>
-                  <td>{bw.name}</td>
-                  <td>{formatBowlerOvers(bw.balls)}</td>
-                  <td>{bw.maidens || 0}</td>
-                  <td>{bw.runs || 0}</td>
-                  <td>{bw.wickets || 0}</td>
-                  <td>{economy(bw.runs, bw.balls)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {(match.innings || []).map((inn) => (
+        <InningsBlock key={inn.number} inn={inn} match={match} />
+      ))}
 
       <div className="page-actions">
         <Link to={`/matches/${id}/live`} className="btn">Live Score</Link>

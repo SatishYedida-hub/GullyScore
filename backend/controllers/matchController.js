@@ -9,6 +9,13 @@ const httpError = (status, message) => {
   return err;
 };
 
+const toResponse = (match) => {
+  if (!match) return match;
+  const obj = typeof match.toObject === 'function' ? match.toObject() : { ...match };
+  delete obj.history;
+  return obj;
+};
+
 exports.createMatch = async (req, res, next) => {
   try {
     const { teamA, teamB, overs, battingTeam } = req.body || {};
@@ -82,62 +89,65 @@ exports.getMatches = async (req, res, next) => {
 exports.getMatchById = async (req, res, next) => {
   try {
     const { id } = req.params;
-
-    const match = await matchService.getMatchById(id);
-    if (!match) {
-      return next(httpError(404, 'Match not found'));
-    }
-
-    return res.status(200).json({ data: match });
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+    const canUndo = (match.history || []).length > 0;
+    return res.status(200).json({ data: toResponse(match), canUndo });
   } catch (error) {
     return next(error);
   }
 };
 
+const validateSetupPayload = (body) => {
+  const { striker, nonStriker, bowler } = body || {};
+  if (!striker || typeof striker !== 'string' || !striker.trim()) {
+    return 'striker is required';
+  }
+  if (!nonStriker || typeof nonStriker !== 'string' || !nonStriker.trim()) {
+    return 'nonStriker is required';
+  }
+  if (!bowler || typeof bowler !== 'string' || !bowler.trim()) {
+    return 'bowler is required';
+  }
+  if (striker.trim() === nonStriker.trim()) {
+    return 'striker and nonStriker must be different';
+  }
+  return null;
+};
+
+const validatePlayers = (match, { striker, nonStriker, bowler }) => {
+  const batPlayers = matchService.getBattingTeamPlayers(match);
+  const bowlPlayers = matchService.getBowlingTeamPlayers(match);
+
+  if (!batPlayers.includes(striker)) {
+    return `${striker} is not in the batting team`;
+  }
+  if (!batPlayers.includes(nonStriker)) {
+    return `${nonStriker} is not in the batting team`;
+  }
+  if (!bowlPlayers.includes(bowler)) {
+    return `${bowler} is not in the bowling team`;
+  }
+  return null;
+};
+
 exports.setupMatch = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { striker, nonStriker, bowler } = req.body || {};
 
-    if (!striker || typeof striker !== 'string' || !striker.trim()) {
-      return next(httpError(400, 'striker is required'));
-    }
-    if (!nonStriker || typeof nonStriker !== 'string' || !nonStriker.trim()) {
-      return next(httpError(400, 'nonStriker is required'));
-    }
-    if (!bowler || typeof bowler !== 'string' || !bowler.trim()) {
-      return next(httpError(400, 'bowler is required'));
-    }
-    if (striker.trim() === nonStriker.trim()) {
-      return next(httpError(400, 'striker and nonStriker must be different'));
-    }
+    const payloadError = validateSetupPayload(req.body);
+    if (payloadError) return next(httpError(400, payloadError));
+
+    const { striker, nonStriker, bowler } = req.body;
 
     const match = await matchService.getMatchById(id);
-    if (!match) {
-      return next(httpError(404, 'Match not found'));
-    }
+    if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'setup') {
       return next(httpError(400, 'Match has already been set up'));
     }
 
-    const batPlayers = matchService.getBattingTeamPlayers(match);
-    const bowlPlayers = matchService.getBowlingTeamPlayers(match);
-
-    if (!batPlayers.includes(striker)) {
-      return next(
-        httpError(400, `${striker} is not in the batting team`)
-      );
-    }
-    if (!batPlayers.includes(nonStriker)) {
-      return next(
-        httpError(400, `${nonStriker} is not in the batting team`)
-      );
-    }
-    if (!bowlPlayers.includes(bowler)) {
-      return next(
-        httpError(400, `${bowler} is not in the bowling team`)
-      );
-    }
+    const playerError = validatePlayers(match, { striker, nonStriker, bowler });
+    if (playerError) return next(httpError(400, playerError));
 
     const updated = await matchService.setupMatch(match, {
       striker,
@@ -147,12 +157,67 @@ exports.setupMatch = async (req, res, next) => {
 
     return res.status(200).json({
       message: 'Match set up successfully',
-      data: updated,
+      data: toResponse(updated),
+      canUndo: false,
     });
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      error.status = 400;
+    if (error.name === 'ValidationError') error.status = 400;
+    return next(error);
+  }
+};
+
+exports.setupInnings2 = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const payloadError = validateSetupPayload(req.body);
+    if (payloadError) return next(httpError(400, payloadError));
+
+    const { striker, nonStriker, bowler } = req.body;
+
+    const match = await matchService.getMatchById(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+    if (match.status !== 'innings-break') {
+      return next(
+        httpError(400, 'Second innings can only be set up at innings break')
+      );
     }
+
+    // After innings 1, batting team flips; service handles the actual swap.
+    // Use a temp-swapped clone for validation.
+    const pseudoMatch = {
+      ...match.toObject(),
+      battingTeam: match.battingTeam === 'teamA' ? 'teamB' : 'teamA',
+      innings: [],
+    };
+    pseudoMatch.teamAPlayers = match.teamAPlayers;
+    pseudoMatch.teamBPlayers = match.teamBPlayers;
+    const batPlayers = matchService.getBattingTeamPlayers(pseudoMatch);
+    const bowlPlayers = matchService.getBowlingTeamPlayers(pseudoMatch);
+
+    if (!batPlayers.includes(striker)) {
+      return next(httpError(400, `${striker} is not in the batting team`));
+    }
+    if (!batPlayers.includes(nonStriker)) {
+      return next(httpError(400, `${nonStriker} is not in the batting team`));
+    }
+    if (!bowlPlayers.includes(bowler)) {
+      return next(httpError(400, `${bowler} is not in the bowling team`));
+    }
+
+    const updated = await matchService.setupInnings2(match, {
+      striker,
+      nonStriker,
+      bowler,
+    });
+
+    return res.status(200).json({
+      message: 'Second innings started',
+      data: toResponse(updated),
+      canUndo: false,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') error.status = 400;
     return next(error);
   }
 };
@@ -173,21 +238,17 @@ exports.updateScore = async (req, res, next) => {
         )
       );
     }
-
     if (typeof wicket !== 'boolean') {
       return next(httpError(400, 'wicket must be a boolean'));
     }
-
     if (extra !== undefined && extra !== null && !isExtra(extra)) {
       return next(
         httpError(400, "extra must be either 'wide' or 'no-ball'")
       );
     }
 
-    const match = await matchService.getMatchById(id);
-    if (!match) {
-      return next(httpError(404, 'Match not found'));
-    }
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
 
     if (match.status === 'completed') {
       return next(httpError(400, 'Match is already completed'));
@@ -197,18 +258,27 @@ exports.updateScore = async (req, res, next) => {
         httpError(400, 'Match is not set up. Pick openers and bowler first.')
       );
     }
-    if (!match.striker || !match.nonStriker) {
+    if (match.status === 'innings-break') {
+      return next(
+        httpError(400, 'Innings break. Set up the second innings first.')
+      );
+    }
+
+    const inn = matchService.currentInnings(match);
+    if (!inn) return next(httpError(400, 'No innings in progress'));
+
+    if (!inn.striker || !inn.nonStriker) {
       return next(
         httpError(400, 'A batsman is missing. Add the new batsman first.')
       );
     }
-    if (!match.currentBowler) {
+    if (!inn.currentBowler) {
       return next(
         httpError(400, 'No bowler is set. Pick the next bowler first.')
       );
     }
 
-    if (wicket && match.score.wickets >= matchService.MAX_WICKETS) {
+    if (wicket && inn.score.wickets >= matchService.MAX_WICKETS) {
       return next(httpError(400, 'All wickets are already down'));
     }
 
@@ -221,12 +291,11 @@ exports.updateScore = async (req, res, next) => {
 
     return res.status(200).json({
       message: 'Score updated successfully',
-      data: updated,
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
     });
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      error.status = 400;
-    }
+    if (error.name === 'ValidationError') error.status = 400;
     return next(error);
   }
 };
@@ -240,26 +309,27 @@ exports.newBatsman = async (req, res, next) => {
       return next(httpError(400, 'batsman is required'));
     }
 
-    const match = await matchService.getMatchById(id);
+    const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'live') {
       return next(httpError(400, 'Match is not live'));
     }
-    if (match.striker && match.nonStriker) {
+
+    const inn = matchService.currentInnings(match);
+    if (!inn) return next(httpError(400, 'No innings in progress'));
+    if (inn.striker && inn.nonStriker) {
       return next(httpError(400, 'Both batsmen are already at the crease'));
     }
 
     const batPlayers = matchService.getBattingTeamPlayers(match);
     if (!batPlayers.includes(batsman)) {
-      return next(
-        httpError(400, `${batsman} is not in the batting team`)
-      );
+      return next(httpError(400, `${batsman} is not in the batting team`));
     }
-    if (batsman === match.striker || batsman === match.nonStriker) {
+    if (batsman === inn.striker || batsman === inn.nonStriker) {
       return next(httpError(400, `${batsman} is already batting`));
     }
 
-    const existing = match.batsmen.find((b) => b.name === batsman);
+    const existing = inn.batsmen.find((b) => b.name === batsman);
     if (existing && existing.out) {
       return next(httpError(400, `${batsman} is already out`));
     }
@@ -267,7 +337,8 @@ exports.newBatsman = async (req, res, next) => {
     const updated = await matchService.setNewBatsman(match, batsman);
     return res.status(200).json({
       message: 'New batsman added',
-      data: updated,
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
     });
   } catch (error) {
     return next(error);
@@ -283,12 +354,15 @@ exports.newBowler = async (req, res, next) => {
       return next(httpError(400, 'bowler is required'));
     }
 
-    const match = await matchService.getMatchById(id);
+    const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'live') {
       return next(httpError(400, 'Match is not live'));
     }
-    if (match.currentBowler) {
+
+    const inn = matchService.currentInnings(match);
+    if (!inn) return next(httpError(400, 'No innings in progress'));
+    if (inn.currentBowler) {
       return next(
         httpError(400, 'A bowler is already set for the current over')
       );
@@ -296,11 +370,9 @@ exports.newBowler = async (req, res, next) => {
 
     const bowlPlayers = matchService.getBowlingTeamPlayers(match);
     if (!bowlPlayers.includes(bowler)) {
-      return next(
-        httpError(400, `${bowler} is not in the bowling team`)
-      );
+      return next(httpError(400, `${bowler} is not in the bowling team`));
     }
-    if (bowler === match.lastOverBowler) {
+    if (bowler === inn.lastOverBowler) {
       return next(
         httpError(400, 'Same bowler cannot bowl two consecutive overs')
       );
@@ -309,9 +381,36 @@ exports.newBowler = async (req, res, next) => {
     const updated = await matchService.setNewBowler(match, bowler);
     return res.status(200).json({
       message: 'Bowler set',
-      data: updated,
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
     });
   } catch (error) {
+    return next(error);
+  }
+};
+
+exports.undoLastAction = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+
+    if (match.status === 'setup') {
+      return next(httpError(400, 'Nothing to undo yet'));
+    }
+    if (!match.history || match.history.length === 0) {
+      return next(httpError(400, 'No actions to undo'));
+    }
+
+    const updated = await matchService.undoLastAction(match);
+    return res.status(200).json({
+      message: 'Last action undone',
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') error.status = 400;
     return next(error);
   }
 };

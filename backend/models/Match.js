@@ -36,6 +36,32 @@ const ballEventSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const inningsSchema = new mongoose.Schema(
+  {
+    number: { type: Number, required: true },
+    battingTeam: { type: String, enum: ['teamA', 'teamB'], required: true },
+    score: {
+      runs: { type: Number, default: 0 },
+      wickets: { type: Number, default: 0 },
+      overs: { type: Number, default: 0 },
+      balls: { type: Number, default: 0 },
+    },
+    extras: {
+      wides: { type: Number, default: 0 },
+      noBalls: { type: Number, default: 0 },
+    },
+    batsmen: { type: [batsmanStatSchema], default: [] },
+    bowlers: { type: [bowlerStatSchema], default: [] },
+    striker: { type: String, default: null },
+    nonStriker: { type: String, default: null },
+    currentBowler: { type: String, default: null },
+    lastOverBowler: { type: String, default: null },
+    currentOverEvents: { type: [ballEventSchema], default: [] },
+    completed: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const matchSchema = new mongoose.Schema(
   {
     teamA: { type: String },
@@ -48,33 +74,26 @@ const matchSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['setup', 'live', 'completed'],
+      enum: ['setup', 'live', 'innings-break', 'completed'],
       default: 'setup',
     },
 
-    score: {
-      runs: { type: Number, default: 0 },
-      wickets: { type: Number, default: 0 },
-      overs: { type: Number, default: 0 },
-      balls: { type: Number, default: 0 },
-    },
-
-    extras: {
-      wides: { type: Number, default: 0 },
-      noBalls: { type: Number, default: 0 },
-    },
-
-    batsmen: { type: [batsmanStatSchema], default: [] },
-    bowlers: { type: [bowlerStatSchema], default: [] },
-
-    striker: { type: String, default: null },
-    nonStriker: { type: String, default: null },
-    currentBowler: { type: String, default: null },
-    lastOverBowler: { type: String, default: null },
-
-    currentOverEvents: { type: [ballEventSchema], default: [] },
-
+    innings: { type: [inningsSchema], default: [] },
+    target: { type: Number, default: null },
     result: { type: String, default: '' },
+
+    history: {
+      type: [
+        {
+          _id: false,
+          kind: { type: String },
+          snapshot: { type: mongoose.Schema.Types.Mixed },
+          at: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+      select: false,
+    },
   },
   { timestamps: true }
 );
