@@ -29,11 +29,11 @@ services:
         sync: false          # e.g. https://gullyscore-frontend.onrender.com
 
   # ---------- Frontend (React static site) ----------
+  # Static sites are always on Render's free tier, so no `plan` field here.
   - type: web
     name: gullyscore-frontend
     runtime: static
     rootDir: frontend
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     autoDeploy: true
