@@ -35,7 +35,9 @@ function Teams() {
 
   const handleDeleteTeam = async (team) => {
     const ok = window.confirm(
-      `Delete team "${team.name}"?\n\nThis only removes the team. Any completed matches that used this team stay intact.`
+      `Delete team "${team.name}"?\n\n` +
+        `Any live or completed matches keep their own copy of the team and ` +
+        `players, so those scorecards will stay intact. You can't undo this.`
     );
     if (!ok) return;
 
@@ -43,9 +45,13 @@ function Teams() {
     setNotice(null);
     try {
       setBusyId(team._id);
-      await apiDeleteTeam(team._id);
+      const { data } = await apiDeleteTeam(team._id);
       setTeams((prev) => prev.filter((t) => t._id !== team._id));
-      setNotice(`Team "${team.name}" deleted.`);
+      setNotice(
+        data?.hadActiveMatch
+          ? `Team "${team.name}" deleted. The existing match keeps its own scorecard.`
+          : `Team "${team.name}" deleted.`
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -54,7 +60,11 @@ function Teams() {
   };
 
   const handleRemovePlayer = async (team, player) => {
-    const ok = window.confirm(`Remove ${player} from ${team.name}?`);
+    const ok = window.confirm(
+      `Remove ${player} from ${team.name}?\n\n` +
+        `Any match already in progress keeps ${player} in its lineup; only ` +
+        `future matches will see the updated squad.`
+    );
     if (!ok) return;
 
     setError(null);
@@ -65,7 +75,11 @@ function Teams() {
       setTeams((prev) =>
         prev.map((t) => (t._id === team._id ? data.data : t))
       );
-      setNotice(`${player} removed from "${team.name}".`);
+      setNotice(
+        data?.hadActiveMatch
+          ? `${player} removed from "${team.name}". In-progress match is unchanged.`
+          : `${player} removed from "${team.name}".`
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

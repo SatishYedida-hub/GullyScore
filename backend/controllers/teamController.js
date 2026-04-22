@@ -70,20 +70,15 @@ exports.deleteTeam = async (req, res, next) => {
     const team = await teamService.getTeamById(id);
     if (!team) return next(sendError(404, 'Team not found'));
 
+    // Existing matches keep their own snapshot of the team name and players,
+    // so deleting the team here does not affect live or completed matches.
     const activeMatch = await teamService.findActiveMatchForTeam(team.name);
-    if (activeMatch) {
-      return next(
-        sendError(
-          409,
-          `Cannot delete "${team.name}" — it is used in a match that is still ${activeMatch.status}. Finish or delete that match first.`
-        )
-      );
-    }
 
     await teamService.deleteTeam(team);
     return res.status(200).json({
       message: `Team "${team.name}" deleted`,
       data: { _id: team._id, name: team.name },
+      hadActiveMatch: !!activeMatch,
     });
   } catch (error) {
     return next(error);
@@ -106,20 +101,15 @@ exports.removePlayer = async (req, res, next) => {
       return next(sendError(404, `${playerName} is not in team "${team.name}"`));
     }
 
+    // Matches snapshot their own player list at creation time, so removing
+    // a player from the team roster does not touch any ongoing match data.
     const activeMatch = await teamService.findActiveMatchForTeam(team.name);
-    if (activeMatch) {
-      return next(
-        sendError(
-          409,
-          `Cannot remove players while "${team.name}" is in a ${activeMatch.status} match. Players already locked into matches are unaffected.`
-        )
-      );
-    }
 
     const updated = await teamService.removePlayer(team, playerName);
     return res.status(200).json({
       message: `${playerName} removed from "${team.name}"`,
       data: updated,
+      hadActiveMatch: !!activeMatch,
     });
   } catch (error) {
     return next(error);
