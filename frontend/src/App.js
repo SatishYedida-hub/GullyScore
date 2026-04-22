@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -9,6 +9,11 @@ import LiveScore from './pages/LiveScore';
 import MatchHistory from './pages/MatchHistory';
 import NotFound from './pages/NotFound';
 import './App.css';
+
+function RedirectToLive() {
+  const { id } = useParams();
+  return <Navigate to={`/matches/${id}/live`} replace />;
+}
 
 function App() {
   return (
@@ -21,7 +26,7 @@ function App() {
           <Route path="/matches/new" element={<CreateMatch />} />
           <Route path="/matches" element={<MatchHistory />} />
           <Route path="/matches/:id/live" element={<LiveScore />} />
-          <Route path="/matches/:id" element={<Navigate to="live" replace />} />
+          <Route path="/matches/:id" element={<RedirectToLive />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

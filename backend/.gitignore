@@ -1,5 +1,14 @@
 node_modules/
+
+# Environment files — never commit these.
+# Only .env.example belongs in the repo.
 .env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
 npm-debug.log
 logs/
 *.log
