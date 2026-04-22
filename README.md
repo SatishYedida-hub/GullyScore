@@ -68,6 +68,78 @@ npm start
 
 The React app will start on `http://localhost:3000` and proxy API calls to the backend.
 
+## Deploying to Render
+
+The repo ships with a `render.yaml` Blueprint that provisions **two services**
+(backend web service + frontend static site) in one go. MongoDB itself is NOT
+hosted on Render — use MongoDB Atlas (free tier).
+
+### 1. Provision a MongoDB Atlas cluster
+
+1. Sign up at [cloud.mongodb.com](https://cloud.mongodb.com) and create a free
+   **M0** cluster.
+2. Create a database user (Database Access) and allow access from anywhere
+   (`0.0.0.0/0`) under Network Access.
+3. Click **Connect → Drivers** and copy the `mongodb+srv://…` URI.
+   Append `/gullyscore` as the database name, e.g.:
+   `mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/gullyscore`
+
+### 2. Push the repo to GitHub
+
+Render deploys from Git, so your `main` branch must be pushed to GitHub (or
+GitLab).
+
+```bash
+git push origin main
+```
+
+### 3. Create the Blueprint on Render
+
+1. In the Render dashboard, click **New → Blueprint**.
+2. Connect your repo. Render will auto-detect `render.yaml` and show both
+   services (`gullyscore-backend` and `gullyscore-frontend`).
+3. For each service with `sync: false` env vars, fill them in:
+   - **gullyscore-backend**:
+     - `MONGO_URI` → paste the Atlas URI from step 1
+     - `CORS_ORIGIN` → leave blank for now (we'll set it in step 5)
+   - **gullyscore-frontend**:
+     - `REACT_APP_API_URL` → leave blank for now
+4. Click **Apply**. Render starts building both services in parallel.
+
+### 4. Grab the URLs
+
+After deployment, Render assigns URLs like:
+
+- Backend: `https://gullyscore-backend.onrender.com`
+- Frontend: `https://gullyscore-frontend.onrender.com`
+
+(The exact names depend on availability.)
+
+### 5. Wire the two services together
+
+Back in the Render dashboard:
+
+1. Open **gullyscore-frontend → Environment** and set
+   `REACT_APP_API_URL=https://gullyscore-backend.onrender.com/api`.
+   Save — Render will rebuild and redeploy the static site.
+2. Open **gullyscore-backend → Environment** and set
+   `CORS_ORIGIN=https://gullyscore-frontend.onrender.com`.
+   Save — Render will restart the backend.
+
+### 6. Verify
+
+- `https://gullyscore-backend.onrender.com/health` should return
+  `Server is running`.
+- Open the frontend URL and try creating a team → creating a match → scoring.
+
+### Notes on the free tier
+
+- Render's free web service **sleeps after 15 minutes** of inactivity. The
+  first request after idle will take ~30 seconds. Upgrade to a paid plan or
+  add a cron-style pinger to keep it warm.
+- Cold starts do not affect the static site (frontend).
+- If `CORS_ORIGIN` is left unset, the backend allows all origins (`*`).
+
 ## Notes
 
 This is a boilerplate scaffold only; no business logic has been implemented yet.
