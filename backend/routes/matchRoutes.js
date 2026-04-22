@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/', matchController.createMatch);
 router.get('/', matchController.getMatches);
 router.get('/:id', matchController.getMatchById);
+router.delete('/:id', matchController.deleteMatch);
 router.post('/:id/setup', matchController.setupMatch);
 router.post('/:id/setup-innings2', matchController.setupInnings2);
 router.post('/:id/score', matchController.updateScore);

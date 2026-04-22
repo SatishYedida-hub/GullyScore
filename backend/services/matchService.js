@@ -306,6 +306,11 @@ const setNewBowler = async (match, name) => {
   return match.save();
 };
 
+const deleteMatch = async (match) => {
+  await Match.deleteOne({ _id: match._id });
+  return match;
+};
+
 module.exports = {
   findMissingTeams,
   createMatch,
@@ -318,6 +323,7 @@ module.exports = {
   setNewBatsman,
   setNewBowler,
   undoLastAction,
+  deleteMatch,
   getBattingTeamPlayers,
   getBowlingTeamPlayers,
   currentInnings,

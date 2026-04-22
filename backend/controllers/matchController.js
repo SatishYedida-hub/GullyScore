@@ -98,6 +98,26 @@ exports.getMatchById = async (req, res, next) => {
   }
 };
 
+exports.deleteMatch = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const match = await matchService.getMatchById(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+
+    await matchService.deleteMatch(match);
+    return res.status(200).json({
+      message: `Match "${match.teamA} vs ${match.teamB}" deleted`,
+      data: {
+        _id: match._id,
+        teamA: match.teamA,
+        teamB: match.teamB,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const validateSetupPayload = (body) => {
   const { striker, nonStriker, bowler } = body || {};
   if (!striker || typeof striker !== 'string' || !striker.trim()) {

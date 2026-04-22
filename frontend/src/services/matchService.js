@@ -23,6 +23,8 @@ export const newBowler = (id, payload) =>
 
 export const undoLastAction = (id) => api.post(`/matches/${id}/undo`);
 
+export const deleteMatch = (id) => api.delete(`/matches/${id}`);
+
 export const currentInningsOf = (match) => {
   if (!match || !match.innings || match.innings.length === 0) return null;
   return match.innings[match.innings.length - 1];

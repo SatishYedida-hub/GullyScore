@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 import PageBanner from '../components/PageBanner';
 import TeamAvatar from '../components/TeamAvatar';
 import { Trophy } from '../components/CricketIcons';
-import { getAllMatches } from '../services/matchService';
+import {
+  deleteMatch as apiDeleteMatch,
+  getAllMatches,
+} from '../services/matchService';
 import { getErrorMessage } from '../services/api';
 
 const formatOvers = (overs) => {
@@ -23,6 +26,8 @@ function MatchHistory() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -42,6 +47,31 @@ function MatchHistory() {
       mounted = false;
     };
   }, []);
+
+  const handleDelete = async (m) => {
+    const label = `${m.teamA} vs ${m.teamB}`;
+    const extraWarning =
+      m.status === 'live' || m.status === 'setup' || m.status === 'innings-break'
+        ? `\n\n"${label}" is currently ${m.status}. Deleting will discard this match entirely.`
+        : '';
+    const ok = window.confirm(
+      `Delete match "${label}"?${extraWarning}\n\nThis removes the scorecard and every ball scored. You can't undo this.`
+    );
+    if (!ok) return;
+
+    setError(null);
+    setNotice(null);
+    try {
+      setBusyId(m._id);
+      await apiDeleteMatch(m._id);
+      setMatches((prev) => prev.filter((x) => x._id !== m._id));
+      setNotice(`Match "${label}" deleted.`);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const banner = (
     <PageBanner
@@ -105,6 +135,10 @@ function MatchHistory() {
   return (
     <section className="page match-history">
       {banner}
+
+      {error && <p className="form-message error">{error}</p>}
+      {notice && <p className="form-message success">{notice}</p>}
+
       <ul className="match-list">
         {matches.map((m) => {
           const liveTarget =
@@ -112,6 +146,7 @@ function MatchHistory() {
               ? `/matches/${m._id}/setup`
               : `/matches/${m._id}/live`;
           const innings = m.innings || [];
+          const rowBusy = busyId === m._id;
           return (
             <li key={m._id} className="match-list-item">
               <div className="match-list-header">
@@ -167,6 +202,14 @@ function MatchHistory() {
                       Scorecard
                     </Link>
                   )}
+                  <button
+                    type="button"
+                    className="btn danger small-btn"
+                    disabled={rowBusy}
+                    onClick={() => handleDelete(m)}
+                  >
+                    {rowBusy ? 'Deleting…' : 'Delete'}
+                  </button>
                 </div>
               </div>
             </li>
