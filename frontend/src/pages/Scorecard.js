@@ -25,7 +25,9 @@ const renderStatus = (b, inn) => {
   if (b.out) return b.howOut || 'out';
   if (b.name === inn.striker) return 'not out *';
   if (b.name === inn.nonStriker) return 'not out';
-  return 'did not bat';
+  // Batsmen only land in inn.batsmen once they come to the crease, so anyone
+  // listed here who isn't out was still at the crease when the innings ended.
+  return 'not out';
 };
 
 function InningsBlock({ inn, match }) {
