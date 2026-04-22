@@ -15,6 +15,7 @@ function Navbar() {
         <li><Link to="/teams">Teams</Link></li>
         <li><Link to="/matches/new">Create Match</Link></li>
         <li><Link to="/matches">Match History</Link></li>
+        <li><Link to="/players">Players</Link></li>
       </ul>
     </nav>
   );

@@ -10,6 +10,8 @@ import MatchSetup from './pages/MatchSetup';
 import LiveScore from './pages/LiveScore';
 import Scorecard from './pages/Scorecard';
 import MatchHistory from './pages/MatchHistory';
+import Players from './pages/Players';
+import PlayerDetail from './pages/PlayerDetail';
 import NotFound from './pages/NotFound';
 import './App.css';
 
@@ -29,6 +31,8 @@ function App() {
           <Route path="/teams/new" element={<CreateTeam />} />
           <Route path="/matches/new" element={<CreateMatch />} />
           <Route path="/matches" element={<MatchHistory />} />
+          <Route path="/players" element={<Players />} />
+          <Route path="/players/:name" element={<PlayerDetail />} />
           <Route path="/matches/:id/setup" element={<MatchSetup />} />
           <Route path="/matches/:id/live" element={<LiveScore />} />
           <Route path="/matches/:id/scorecard" element={<Scorecard />} />

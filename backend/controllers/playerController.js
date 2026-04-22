@@ -1,39 +1,41 @@
+const playerService = require('../services/playerService');
+
+const httpError = (status, message) => {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+};
+
 exports.getPlayers = async (req, res, next) => {
   try {
-    res.status(200).json({ message: 'getPlayers not implemented', data: [] });
+    const players = await playerService.aggregateAll();
+    return res.status(200).json({
+      count: players.length,
+      data: players,
+    });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
-exports.getPlayerById = async (req, res, next) => {
+exports.getPlayerByName = async (req, res, next) => {
   try {
-    res.status(200).json({ message: 'getPlayerById not implemented', data: null });
-  } catch (error) {
-    next(error);
-  }
-};
+    const raw = req.params.name || '';
+    const name = decodeURIComponent(raw).trim();
+    if (!name) return next(httpError(400, 'Player name is required'));
 
-exports.createPlayer = async (req, res, next) => {
-  try {
-    res.status(201).json({ message: 'createPlayer not implemented', data: null });
-  } catch (error) {
-    next(error);
-  }
-};
+    const player = await playerService.aggregateOne(name);
 
-exports.updatePlayer = async (req, res, next) => {
-  try {
-    res.status(200).json({ message: 'updatePlayer not implemented', data: null });
-  } catch (error) {
-    next(error);
-  }
-};
+    const hasBatting = player.batting.innings > 0;
+    const hasBowling = player.bowling.innings > 0;
+    const onRoster = player.teams.length > 0;
 
-exports.deletePlayer = async (req, res, next) => {
-  try {
-    res.status(200).json({ message: 'deletePlayer not implemented' });
+    if (!hasBatting && !hasBowling && !onRoster) {
+      return next(httpError(404, `Player "${name}" not found`));
+    }
+
+    return res.status(200).json({ data: player });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

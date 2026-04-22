@@ -30,6 +30,13 @@ const TILES = [
     Icon: Trophy,
     tone: 'tile-history',
   },
+  {
+    to: '/players',
+    title: 'Player Records',
+    desc: 'Career batting and bowling stats',
+    Icon: CricketBall,
+    tone: 'tile-players',
+  },
 ];
 
 function Home() {
