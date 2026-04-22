@@ -2,10 +2,24 @@ const mongoose = require('mongoose');
 
 const Team = require('../models/Team');
 const Match = require('../models/Match');
+const rosterService = require('./rosterService');
 
 const createTeam = async ({ name, players = [] }) => {
-  const team = new Team({ name, players });
-  return team.save();
+  const cleaned = Array.from(
+    new Set(
+      (players || [])
+        .map((p) => (typeof p === 'string' ? p.trim() : ''))
+        .filter(Boolean)
+    )
+  );
+  const team = new Team({ name, players: cleaned });
+  const saved = await team.save();
+  if (cleaned.length > 0) {
+    // Keep the global roster in sync so free-form names typed during team
+    // creation become reusable players everywhere.
+    await rosterService.ensurePlayers(cleaned);
+  }
+  return saved;
 };
 
 const getAllTeams = async () => {
@@ -36,11 +50,34 @@ const removePlayer = async (team, playerName) => {
   return team.save();
 };
 
+/**
+ * Add a player name to a team's current lineup. Creates a roster entry on
+ * the fly so the player becomes reusable across teams.
+ */
+const addPlayer = async (team, playerName) => {
+  const trimmed = (playerName || '').trim();
+  if (!trimmed) {
+    const err = new Error('Player name is required');
+    err.status = 400;
+    throw err;
+  }
+  if ((team.players || []).includes(trimmed)) {
+    const err = new Error(`${trimmed} is already in "${team.name}"`);
+    err.status = 409;
+    throw err;
+  }
+  team.players = [...(team.players || []), trimmed];
+  const saved = await team.save();
+  await rosterService.ensurePlayers([trimmed]);
+  return saved;
+};
+
 module.exports = {
   createTeam,
   getAllTeams,
   getTeamById,
   deleteTeam,
   removePlayer,
+  addPlayer,
   findActiveMatchForTeam,
 };

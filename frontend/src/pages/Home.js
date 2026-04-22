@@ -17,6 +17,13 @@ const TILES = [
     tone: 'tile-teams',
   },
   {
+    to: '/roster',
+    title: 'Player Pool',
+    desc: 'Add players once, reuse in any team',
+    Icon: CricketBat,
+    tone: 'tile-pool',
+  },
+  {
     to: '/matches/new',
     title: 'Start a Match',
     desc: 'Pick teams, overs and openers',

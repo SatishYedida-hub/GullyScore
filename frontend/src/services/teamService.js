@@ -10,3 +10,6 @@ export const deleteTeam = (id) => api.delete(`/teams/${id}`);
 
 export const removePlayer = (id, playerName) =>
   api.delete(`/teams/${id}/players/${encodeURIComponent(playerName)}`);
+
+export const addPlayerToTeam = (id, name) =>
+  api.post(`/teams/${id}/players`, { name });

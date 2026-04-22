@@ -2,9 +2,13 @@ const mongoose = require('mongoose');
 
 const playerSchema = new mongoose.Schema(
   {
-    name: { type: String },
-    team: { type: String },
-    role: { type: String },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

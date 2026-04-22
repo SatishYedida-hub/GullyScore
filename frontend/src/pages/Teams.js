@@ -1,18 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import PageBanner from '../components/PageBanner';
 import TeamAvatar from '../components/TeamAvatar';
 import { Stumps } from '../components/CricketIcons';
 import {
+  addPlayerToTeam as apiAddPlayer,
   deleteTeam as apiDeleteTeam,
   getAllTeams,
   removePlayer as apiRemovePlayer,
 } from '../services/teamService';
+import { getRoster } from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
 
 function Teams() {
   const [teams, setTeams] = useState([]);
+  const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -20,8 +23,12 @@ function Teams() {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await getAllTeams();
-      setTeams(data.data || []);
+      const [teamsRes, rosterRes] = await Promise.all([
+        getAllTeams(),
+        getRoster().catch(() => ({ data: { data: [] } })),
+      ]);
+      setTeams(teamsRes.data.data || []);
+      setRoster(rosterRes.data.data || []);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -87,6 +94,34 @@ function Teams() {
     }
   };
 
+  const handleAddPlayer = async (team, playerName) => {
+    const val = (playerName || '').trim();
+    if (!val) return;
+    setError(null);
+    setNotice(null);
+    try {
+      setBusyId(`${team._id}:add`);
+      const { data } = await apiAddPlayer(team._id, val);
+      setTeams((prev) =>
+        prev.map((t) => (t._id === team._id ? data.data : t))
+      );
+      // Mirror into local roster cache if it's a brand-new name
+      setRoster((prev) =>
+        prev.find((p) => p.name === val)
+          ? prev
+          : [
+              ...prev,
+              { _id: `local-${val}`, name: val, teams: [{ name: team.name }] },
+            ].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setNotice(`${val} added to "${team.name}".`);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <section className="page teams-page">
       <PageBanner
@@ -97,12 +132,17 @@ function Teams() {
           </>
         }
         title="Teams"
-        subtitle="Manage your rosters — add players, clean up old squads, and get ready to play."
+        subtitle="Manage your rosters — add players from your pool, clean up old squads, and get ready to play."
         tone="tone-green"
         actions={
-          <Link to="/teams/new" className="btn primary">
-            + New Team
-          </Link>
+          <div className="page-banner-btn-row">
+            <Link to="/roster" className="btn">
+              Manage player pool
+            </Link>
+            <Link to="/teams/new" className="btn primary">
+              + New Team
+            </Link>
+          </div>
         }
       />
 
@@ -126,59 +166,137 @@ function Teams() {
         </div>
       ) : (
         <ul className="team-list">
-          {teams.map((team) => {
-            const teamBusy = busyId === team._id;
-            return (
-              <li key={team._id} className="team-card">
-                <div className="team-card-head">
-                  <div className="team-card-ident">
-                    <TeamAvatar name={team.name} size={48} />
-                    <div>
-                      <h3 className="team-name">{team.name}</h3>
-                      <span className="muted small">
-                        {team.players.length} player
-                        {team.players.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    className="btn danger small-btn"
-                    disabled={teamBusy}
-                    onClick={() => handleDeleteTeam(team)}
-                  >
-                    {teamBusy ? 'Deleting…' : 'Delete team'}
-                  </button>
-                </div>
+          {teams.map((team) => (
+            <TeamCard
+              key={team._id}
+              team={team}
+              roster={roster}
+              busyId={busyId}
+              onDeleteTeam={handleDeleteTeam}
+              onRemovePlayer={handleRemovePlayer}
+              onAddPlayer={handleAddPlayer}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
-                {team.players.length === 0 ? (
-                  <p className="muted small">No players added.</p>
-                ) : (
-                  <ul className="player-chips">
-                    {team.players.map((player) => {
-                      const playerKey = `${team._id}:${player}`;
-                      const playerBusy = busyId === playerKey;
-                      return (
-                        <li key={player} className="player-chip">
-                          <span>{player}</span>
-                          <button
-                            className="chip-remove"
-                            title={`Remove ${player}`}
-                            disabled={playerBusy}
-                            onClick={() => handleRemovePlayer(team, player)}
-                          >
-                            {playerBusy ? '…' : '×'}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+function TeamCard({
+  team,
+  roster,
+  busyId,
+  onDeleteTeam,
+  onRemovePlayer,
+  onAddPlayer,
+}) {
+  const [picker, setPicker] = useState('');
+  const [typed, setTyped] = useState('');
+
+  const available = useMemo(
+    () => roster.filter((p) => !team.players.includes(p.name)),
+    [roster, team.players]
+  );
+
+  const teamBusy = busyId === team._id;
+  const addBusy = busyId === `${team._id}:add`;
+
+  const handlePick = (e) => {
+    const val = e.target.value;
+    setPicker('');
+    if (val) onAddPlayer(team, val);
+  };
+
+  const handleAddTyped = (e) => {
+    e.preventDefault();
+    const val = typed.trim();
+    if (!val) return;
+    setTyped('');
+    onAddPlayer(team, val);
+  };
+
+  return (
+    <li className="team-card">
+      <div className="team-card-head">
+        <div className="team-card-ident">
+          <TeamAvatar name={team.name} size={48} />
+          <div>
+            <h3 className="team-name">{team.name}</h3>
+            <span className="muted small">
+              {team.players.length} player
+              {team.players.length === 1 ? '' : 's'}
+            </span>
+          </div>
+        </div>
+        <button
+          className="btn danger small-btn"
+          disabled={teamBusy}
+          onClick={() => onDeleteTeam(team)}
+        >
+          {teamBusy ? 'Deleting…' : 'Delete team'}
+        </button>
+      </div>
+
+      {team.players.length === 0 ? (
+        <p className="muted small">No players added.</p>
+      ) : (
+        <ul className="player-chips">
+          {team.players.map((player) => {
+            const playerKey = `${team._id}:${player}`;
+            const playerBusy = busyId === playerKey;
+            return (
+              <li key={player} className="player-chip">
+                <span>{player}</span>
+                <button
+                  className="chip-remove"
+                  title={`Remove ${player}`}
+                  disabled={playerBusy}
+                  onClick={() => onRemovePlayer(team, player)}
+                >
+                  {playerBusy ? '…' : '×'}
+                </button>
               </li>
             );
           })}
         </ul>
       )}
-    </section>
+
+      <div className="add-player-bar">
+        {available.length > 0 && (
+          <select
+            className="add-player-select"
+            value={picker}
+            onChange={handlePick}
+            disabled={addBusy}
+          >
+            <option value="">+ Add from pool…</option>
+            {available.map((p) => (
+              <option key={p._id} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <form className="add-player-inline" onSubmit={handleAddTyped}>
+          <input
+            type="text"
+            className="add-player-input"
+            placeholder="Or type a new name…"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            disabled={addBusy}
+          />
+          <button
+            type="submit"
+            className="btn small-btn"
+            disabled={addBusy || !typed.trim()}
+          >
+            {addBusy ? 'Adding…' : '+ Add'}
+          </button>
+        </form>
+      </div>
+    </li>
   );
 }
 

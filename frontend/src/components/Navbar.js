@@ -13,9 +13,10 @@ function Navbar() {
       <ul className="navbar-links">
         <li><Link to="/">Home</Link></li>
         <li><Link to="/teams">Teams</Link></li>
+        <li><Link to="/roster">Player Pool</Link></li>
         <li><Link to="/matches/new">Create Match</Link></li>
         <li><Link to="/matches">Match History</Link></li>
-        <li><Link to="/players">Players</Link></li>
+        <li><Link to="/players">Records</Link></li>
       </ul>
     </nav>
   );

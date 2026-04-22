@@ -85,6 +85,28 @@ exports.deleteTeam = async (req, res, next) => {
   }
 };
 
+exports.addPlayer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body || {};
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return next(sendError(400, 'Player name is required'));
+    }
+
+    const team = await teamService.getTeamById(id);
+    if (!team) return next(sendError(404, 'Team not found'));
+
+    const updated = await teamService.addPlayer(team, name);
+    return res.status(200).json({
+      message: `${name.trim()} added to "${team.name}"`,
+      data: updated,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 exports.removePlayer = async (req, res, next) => {
   try {
     const { id, player } = req.params;

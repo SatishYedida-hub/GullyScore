@@ -12,6 +12,7 @@ import Scorecard from './pages/Scorecard';
 import MatchHistory from './pages/MatchHistory';
 import Players from './pages/Players';
 import PlayerDetail from './pages/PlayerDetail';
+import Roster from './pages/Roster';
 import NotFound from './pages/NotFound';
 import './App.css';
 
@@ -29,6 +30,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/teams" element={<Teams />} />
           <Route path="/teams/new" element={<CreateTeam />} />
+          <Route path="/roster" element={<Roster />} />
           <Route path="/matches/new" element={<CreateMatch />} />
           <Route path="/matches" element={<MatchHistory />} />
           <Route path="/players" element={<Players />} />

@@ -1753,3 +1753,251 @@ fieldset.form-field {
     max-width: none;
   }
 }
+
+/* ============== Player Pool (Roster) ============== */
+.tile-pool .home-tile-icon {
+  background: linear-gradient(135deg, #d1fae5, #34d399);
+}
+
+.roster-form {
+  padding: 18px 20px;
+}
+.roster-form-field {
+  margin: 0;
+}
+.roster-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.roster-input-row input[type='text'] {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.roster-input-row input[type='text']:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.roster-input-row .btn {
+  white-space: nowrap;
+}
+
+.roster-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.roster-row:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+.roster-row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+.roster-row-name {
+  font-size: 15px;
+}
+.roster-row-main:hover .roster-row-name {
+  color: var(--primary);
+}
+
+/* ============== CreateTeam: selected + pool chips ============== */
+.selected-chips {
+  list-style: none;
+  margin: 4px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 4px;
+  padding-right: 6px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.selected-chip .chip-remove {
+  background: rgba(30, 58, 138, 0.15);
+  color: #1e3a8a;
+}
+.selected-chip .chip-remove:hover:not(:disabled) {
+  background: rgba(30, 58, 138, 0.3);
+  color: #1e3a8a;
+}
+
+.add-inline {
+  margin-top: 6px;
+}
+
+.roster-picker {
+  background: #f8fafc;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.roster-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.roster-picker-head .section-title {
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.pool-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.pool-chip:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.pool-chip.on {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-color: #34d399;
+  color: #065f46;
+}
+.pool-chip-mark {
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.pool-chip.on .pool-chip-mark {
+  color: #065f46;
+}
+
+.hint {
+  margin: 6px 0 0;
+}
+
+/* ============== Teams page: per-team add-player bar ============== */
+.add-player-bar {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.add-player-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  font-family: inherit;
+  min-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.add-player-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.add-player-inline {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+.add-player-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.add-player-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Banner can now carry multiple action buttons side-by-side */
+.page-banner-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 540px) {
+  .add-player-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .add-player-select {
+    width: 100%;
+  }
+  .add-player-inline {
+    min-width: 0;
+  }
+}

@@ -1,5 +1,6 @@
 const Match = require('../models/Match');
 const Team = require('../models/Team');
+const Player = require('../models/Player');
 const { ballsToOvers, BALLS_PER_OVER } = require('../utils/cricket');
 
 /**
@@ -131,7 +132,10 @@ const finalizeBowling = (bw) => {
  * the running career batting/bowling totals.
  */
 const buildRegistry = async () => {
-  const teams = await Team.find().select('name players');
+  const [teams, rosterPlayers] = await Promise.all([
+    Team.find().select('name players'),
+    Player.find().select('name'),
+  ]);
   const registry = new Map();
 
   const ensure = (name) => {
@@ -147,6 +151,11 @@ const buildRegistry = async () => {
     }
     return registry.get(name);
   };
+
+  // Seed from the standalone roster so pool-only players still appear.
+  rosterPlayers.forEach((p) => {
+    ensure(p.name);
+  });
 
   teams.forEach((t) => {
     (t.players || []).forEach((p) => {
