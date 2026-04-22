@@ -62,7 +62,20 @@ function MatchHistory() {
     return (
       <section className="page match-history">
         <h1>Match History</h1>
-        <p>No matches yet. <Link to="/matches/new">Create one</Link>.</p>
+        <div className="empty-state">
+          <img
+            src="/images/cricket-empty.png"
+            alt="Empty cricket scoreboard on a sunny field"
+            className="empty-art"
+          />
+          <h3>No matches yet</h3>
+          <p className="muted">
+            Kick things off by creating your first match.
+          </p>
+          <Link to="/matches/new" className="btn primary">
+            Create a match
+          </Link>
+        </div>
       </section>
     );
   }

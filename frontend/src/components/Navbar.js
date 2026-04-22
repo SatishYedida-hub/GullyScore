@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+import { CricketBall } from './CricketIcons';
+
 function Navbar() {
   return (
     <nav className="navbar">
-      <Link to="/" className="navbar-brand">GullyScore</Link>
+      <Link to="/" className="navbar-brand">
+        <CricketBall size={24} className="nav-ball" />
+        <span>GullyScore</span>
+      </Link>
       <ul className="navbar-links">
         <li><Link to="/">Home</Link></li>
         <li><Link to="/teams/new">Create Team</Link></li>
