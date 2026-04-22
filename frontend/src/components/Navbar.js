@@ -12,7 +12,7 @@ function Navbar() {
       </Link>
       <ul className="navbar-links">
         <li><Link to="/">Home</Link></li>
-        <li><Link to="/teams/new">Create Team</Link></li>
+        <li><Link to="/teams">Teams</Link></li>
         <li><Link to="/matches/new">Create Match</Link></li>
         <li><Link to="/matches">Match History</Link></li>
       </ul>

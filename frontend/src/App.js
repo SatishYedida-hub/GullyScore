@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
+import Teams from './pages/Teams';
 import CreateTeam from './pages/CreateTeam';
 import CreateMatch from './pages/CreateMatch';
 import MatchSetup from './pages/MatchSetup';
@@ -24,6 +25,7 @@ function App() {
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/teams" element={<Teams />} />
           <Route path="/teams/new" element={<CreateTeam />} />
           <Route path="/matches/new" element={<CreateMatch />} />
           <Route path="/matches" element={<MatchHistory />} />

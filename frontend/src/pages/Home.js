@@ -10,9 +10,9 @@ import {
 
 const TILES = [
   {
-    to: '/teams/new',
-    title: 'Create a Team',
-    desc: 'Add your squad and line-up',
+    to: '/teams',
+    title: 'Teams',
+    desc: 'Add, view or delete your squads',
     Icon: Stumps,
     tone: 'tile-teams',
   },
@@ -49,8 +49,8 @@ function Home() {
             <Link to="/matches/new" className="btn primary">
               Start a match
             </Link>
-            <Link to="/teams/new" className="btn">
-              Create a team
+            <Link to="/teams" className="btn">
+              Manage teams
             </Link>
           </div>
         </div>

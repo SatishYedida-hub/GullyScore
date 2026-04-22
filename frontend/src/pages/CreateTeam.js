@@ -73,6 +73,13 @@ function CreateTeam() {
           <button
             type="button"
             className="btn"
+            onClick={() => navigate('/teams')}
+          >
+            View all teams
+          </button>
+          <button
+            type="button"
+            className="btn"
             onClick={() => navigate('/matches/new')}
           >
             Go to Create Match
