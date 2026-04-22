@@ -79,6 +79,40 @@ function Home() {
           </Link>
         ))}
       </div>
+
+      <div className="feature-strip">
+        <div className="feature-card">
+          <img
+            src="/images/cricket-action.png"
+            alt="Batsman playing a cover drive"
+            className="feature-card-image"
+          />
+          <div className="feature-card-body">
+            <span className="feature-card-kicker">Live scoring</span>
+            <h3>Ball-by-ball, just like the pros</h3>
+            <p className="muted">
+              Tap runs, wickets and extras. Strike rotates automatically, overs
+              flip the bowler, and the scorecard keeps up in real time.
+            </p>
+          </div>
+        </div>
+
+        <div className="feature-card">
+          <img
+            src="/images/cricket-victory.png"
+            alt="Gold trophy with fireworks"
+            className="feature-card-image"
+          />
+          <div className="feature-card-body">
+            <span className="feature-card-kicker">Two innings</span>
+            <h3>Full chases, full scorecards</h3>
+            <p className="muted">
+              Complete second innings with targets, run-rate tracking, results
+              and match-winning moments saved to your history.
+            </p>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import PageBanner from '../components/PageBanner';
+import TeamAvatar from '../components/TeamAvatar';
+import { Stumps } from '../components/CricketIcons';
 import {
   deleteTeam as apiDeleteTeam,
   getAllTeams,
@@ -72,12 +75,22 @@ function Teams() {
 
   return (
     <section className="page teams-page">
-      <div className="page-header">
-        <h1>Teams</h1>
-        <Link to="/teams/new" className="btn primary">
-          + New Team
-        </Link>
-      </div>
+      <PageBanner
+        image="/images/cricket-team.png"
+        kicker={
+          <>
+            <Stumps size={16} /> Your squads
+          </>
+        }
+        title="Teams"
+        subtitle="Manage your rosters — add players, clean up old squads, and get ready to play."
+        tone="tone-green"
+        actions={
+          <Link to="/teams/new" className="btn primary">
+            + New Team
+          </Link>
+        }
+      />
 
       {error && <p className="form-message error">{error}</p>}
       {notice && <p className="form-message success">{notice}</p>}
@@ -86,6 +99,11 @@ function Teams() {
         <p>Loading teams…</p>
       ) : teams.length === 0 ? (
         <div className="empty-state">
+          <img
+            src="/images/cricket-empty.png"
+            alt=""
+            className="empty-art"
+          />
           <h3>No teams yet</h3>
           <p className="muted">Create your first team to start playing.</p>
           <Link to="/teams/new" className="btn primary">
@@ -99,7 +117,16 @@ function Teams() {
             return (
               <li key={team._id} className="team-card">
                 <div className="team-card-head">
-                  <h3 className="team-name">{team.name}</h3>
+                  <div className="team-card-ident">
+                    <TeamAvatar name={team.name} size={48} />
+                    <div>
+                      <h3 className="team-name">{team.name}</h3>
+                      <span className="muted small">
+                        {team.players.length} player
+                        {team.players.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  </div>
                   <button
                     className="btn danger small-btn"
                     disabled={teamBusy}

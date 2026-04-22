@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import PageBanner from '../components/PageBanner';
+import TeamAvatar from '../components/TeamAvatar';
+import { Trophy } from '../components/CricketIcons';
 import { getAllMatches } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
 
@@ -40,10 +43,29 @@ function MatchHistory() {
     };
   }, []);
 
+  const banner = (
+    <PageBanner
+      image="/images/cricket-victory.png"
+      kicker={
+        <>
+          <Trophy size={16} /> Hall of fame
+        </>
+      }
+      title="Match History"
+      subtitle="Live scores, finished matches and full ball-by-ball scorecards."
+      tone="tone-purple"
+      actions={
+        <Link to="/matches/new" className="btn primary">
+          + New Match
+        </Link>
+      }
+    />
+  );
+
   if (loading) {
     return (
       <section className="page match-history">
-        <h1>Match History</h1>
+        {banner}
         <p>Loading matches…</p>
       </section>
     );
@@ -52,7 +74,7 @@ function MatchHistory() {
   if (error) {
     return (
       <section className="page match-history">
-        <h1>Match History</h1>
+        {banner}
         <p className="form-message error">{error}</p>
       </section>
     );
@@ -61,7 +83,7 @@ function MatchHistory() {
   if (matches.length === 0) {
     return (
       <section className="page match-history">
-        <h1>Match History</h1>
+        {banner}
         <div className="empty-state">
           <img
             src="/images/cricket-empty.png"
@@ -82,7 +104,7 @@ function MatchHistory() {
 
   return (
     <section className="page match-history">
-      <h1>Match History</h1>
+      {banner}
       <ul className="match-list">
         {matches.map((m) => {
           const liveTarget =
@@ -93,7 +115,17 @@ function MatchHistory() {
           return (
             <li key={m._id} className="match-list-item">
               <div className="match-list-header">
-                <strong>{m.teamA}</strong> vs <strong>{m.teamB}</strong>
+                <div className="match-teams-line">
+                  <span className="mini-team">
+                    <TeamAvatar name={m.teamA} size={32} />
+                    <strong>{m.teamA}</strong>
+                  </span>
+                  <span className="vs-mini">vs</span>
+                  <span className="mini-team">
+                    <TeamAvatar name={m.teamB} size={32} />
+                    <strong>{m.teamB}</strong>
+                  </span>
+                </div>
                 <span className={`badge badge-${m.status}`}>{m.status}</span>
               </div>
 

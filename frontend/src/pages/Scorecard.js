@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import TeamAvatar from '../components/TeamAvatar';
 import { getMatchById } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
 
@@ -173,23 +174,50 @@ function Scorecard() {
     );
   }
 
+  const isCompleted = match.status === 'completed';
+
   return (
     <section className="page scorecard-page">
-      <header className="score-header">
-        <div>
-          <h1 className="teams-title">
-            {match.teamA} <span className="vs">vs</span> {match.teamB}
-          </h1>
+      <header className="score-header score-header-pretty">
+        <div className="score-header-left">
+          <div className="teams-row">
+            <span className="team-ident">
+              <TeamAvatar name={match.teamA} size={40} />
+              <strong>{match.teamA}</strong>
+            </span>
+            <span className="vs">vs</span>
+            <span className="team-ident">
+              <TeamAvatar name={match.teamB} size={40} />
+              <strong>{match.teamB}</strong>
+            </span>
+          </div>
           <p className="match-meta">{match.overs} overs match</p>
         </div>
         <span className={`badge badge-${match.status}`}>{match.status}</span>
       </header>
 
-      {match.target && (
+      {isCompleted && match.result && (
+        <div className="victory-banner">
+          <img
+            src="/images/cricket-victory.png"
+            alt="Cricket trophy celebration"
+            className="victory-image"
+          />
+          <div className="victory-text">
+            <span className="victory-kicker">Match result</span>
+            <h2>{match.result}</h2>
+            <p className="muted">
+              {match.overs} overs match · {match.innings?.length || 0} innings
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isCompleted && match.target && (
         <p className="muted small">Target: {match.target}</p>
       )}
 
-      {match.result && (
+      {!isCompleted && match.result && (
         <p className="form-message success">{match.result}</p>
       )}
 

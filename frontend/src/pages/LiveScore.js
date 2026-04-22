@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
+import TeamAvatar from '../components/TeamAvatar';
 import {
   currentInningsOf,
   getMatchById,
@@ -229,17 +230,59 @@ function LiveScore() {
 
   return (
     <section className="page live-score">
-      <header className="score-header">
-        <div>
-          <h1 className="teams-title">
-            {match.teamA} <span className="vs">vs</span> {match.teamB}
-          </h1>
+      <header className="score-header score-header-pretty">
+        <div className="score-header-left">
+          <div className="teams-row">
+            <span className="team-ident">
+              <TeamAvatar name={match.teamA} size={40} />
+              <strong>{match.teamA}</strong>
+            </span>
+            <span className="vs">vs</span>
+            <span className="team-ident">
+              <TeamAvatar name={match.teamB} size={40} />
+              <strong>{match.teamB}</strong>
+            </span>
+          </div>
           <p className="match-meta">
-            {match.overs} overs · Innings {inn?.number ?? '–'} · {battingTeamName} batting
+            {match.overs} overs · Innings {inn?.number ?? '–'} ·{' '}
+            <strong>{battingTeamName}</strong> batting
           </p>
         </div>
         <span className={`badge badge-${match.status}`}>{match.status}</span>
       </header>
+
+      {isCompleted && (
+        <div className="victory-banner">
+          <img
+            src="/images/cricket-victory.png"
+            alt="Cricket trophy celebration"
+            className="victory-image"
+          />
+          <div className="victory-text">
+            <span className="victory-kicker">Full time</span>
+            <h2>{match.result || 'Match completed'}</h2>
+            <p className="muted">
+              {match.teamA} {match.innings?.[0]?.score?.runs ?? 0}/
+              {match.innings?.[0]?.score?.wickets ?? 0}
+              {match.innings?.[1] && (
+                <>
+                  {' '}
+                  · {match.teamB} {match.innings[1].score.runs}/
+                  {match.innings[1].score.wickets}
+                </>
+              )}
+            </p>
+            <div className="victory-actions">
+              <Link to={`/matches/${id}/scorecard`} className="btn primary">
+                View Full Scorecard
+              </Link>
+              <Link to="/matches" className="btn">
+                More Matches
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {match.innings && match.innings.length === 2 && (
         <div className="innings-summary">
@@ -381,12 +424,6 @@ function LiveScore() {
       </div>
 
       {error && <p className="form-message error">{error}</p>}
-
-      {isCompleted && (
-        <p className="form-message success">
-          Match completed. {match.result}
-        </p>
-      )}
 
       {needsBatsman && !isCompleted && (
         <div className="panel action-required">

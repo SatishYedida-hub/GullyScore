@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import PageBanner from '../components/PageBanner';
+import TeamAvatar from '../components/TeamAvatar';
+import { CricketBall } from '../components/CricketIcons';
 import {
   getMatchById,
   setupMatch,
@@ -119,12 +122,41 @@ function MatchSetup() {
 
   return (
     <section className="page match-setup">
-      <h1>{isInnings2 ? 'Second Innings Setup' : 'Match Setup'}</h1>
-      <p className="muted">
-        <strong>{match.teamA}</strong> vs <strong>{match.teamB}</strong> —{' '}
-        {match.overs} overs. <strong>{battingTeamName}</strong> to bat
-        {isInnings2 ? ' now.' : ' first.'}
-      </p>
+      <PageBanner
+        image={isInnings2 ? '/images/cricket-action.png' : '/images/cricket-hero.png'}
+        kicker={
+          <>
+            <CricketBall size={16} /> {isInnings2 ? 'Innings break' : 'Toss complete'}
+          </>
+        }
+        title={isInnings2 ? 'Second Innings Setup' : 'Match Setup'}
+        subtitle={`${match.overs} overs match — ${battingTeamName} to bat${
+          isInnings2 ? ' now.' : ' first.'
+        }`}
+        tone={isInnings2 ? 'tone-orange' : 'tone-blue'}
+      />
+
+      <div className="versus-preview">
+        <div className="versus-side">
+          <TeamAvatar name={match.teamA} size={56} />
+          <div>
+            <strong>{match.teamA}</strong>
+            <span className="muted small">
+              {match.teamAPlayers?.length || 0} players
+            </span>
+          </div>
+        </div>
+        <span className="versus-divider">VS</span>
+        <div className="versus-side versus-right">
+          <div className="ta-right">
+            <strong>{match.teamB}</strong>
+            <span className="muted small">
+              {match.teamBPlayers?.length || 0} players
+            </span>
+          </div>
+          <TeamAvatar name={match.teamB} size={56} />
+        </div>
+      </div>
 
       {isInnings2 && firstInnings && (
         <div className="target-banner">

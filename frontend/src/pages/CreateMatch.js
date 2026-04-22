@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import PageBanner from '../components/PageBanner';
+import TeamAvatar from '../components/TeamAvatar';
+import { CricketBat } from '../components/CricketIcons';
 import { getAllTeams } from '../services/teamService';
 import { createMatch } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
@@ -64,10 +67,24 @@ function CreateMatch() {
     }
   };
 
+  const banner = (
+    <PageBanner
+      image="/images/cricket-action.png"
+      kicker={
+        <>
+          <CricketBat size={16} /> Match day
+        </>
+      }
+      title="Start a Match"
+      subtitle="Pick the two sides, who bats first, and how many overs — then we'll roll."
+      tone="tone-orange"
+    />
+  );
+
   if (loadingTeams) {
     return (
       <section className="page create-match">
-        <h1>Create Match</h1>
+        {banner}
         <p>Loading teams…</p>
       </section>
     );
@@ -76,22 +93,62 @@ function CreateMatch() {
   if (teams.length < 2) {
     return (
       <section className="page create-match">
-        <h1>Create Match</h1>
-        <p>
-          You need at least two teams to schedule a match.{' '}
-          <button className="btn link" onClick={() => navigate('/teams/new')}>
+        {banner}
+        <div className="empty-state">
+          <h3>You need at least two teams</h3>
+          <p className="muted">Create a couple of squads before scheduling a match.</p>
+          <button className="btn primary" onClick={() => navigate('/teams/new')}>
             Create a team
           </button>
-        </p>
+        </div>
       </section>
     );
   }
 
+  const teamAObj = teams.find((t) => t.name === teamA);
+  const teamBObj = teams.find((t) => t.name === teamB);
+
   return (
     <section className="page create-match">
-      <h1>Create Match</h1>
+      {banner}
 
-      <form className="form" onSubmit={handleSubmit}>
+      {(teamA || teamB) && (
+        <div className="versus-preview">
+          <div className="versus-side">
+            {teamAObj ? (
+              <>
+                <TeamAvatar name={teamAObj.name} size={56} />
+                <div>
+                  <strong>{teamAObj.name}</strong>
+                  <span className="muted small">
+                    {teamAObj.players?.length || 0} players
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className="muted">Team A</span>
+            )}
+          </div>
+          <span className="versus-divider">VS</span>
+          <div className="versus-side versus-right">
+            {teamBObj ? (
+              <>
+                <div className="ta-right">
+                  <strong>{teamBObj.name}</strong>
+                  <span className="muted small">
+                    {teamBObj.players?.length || 0} players
+                  </span>
+                </div>
+                <TeamAvatar name={teamBObj.name} size={56} />
+              </>
+            ) : (
+              <span className="muted">Team B</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <form className="form card-form" onSubmit={handleSubmit}>
         <label className="form-field">
           <span>Team A</span>
           <select value={teamA} onChange={(e) => setTeamA(e.target.value)} required>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import PageBanner from '../components/PageBanner';
+import { Stumps } from '../components/CricketIcons';
 import { createTeam } from '../services/teamService';
 import { getErrorMessage } from '../services/api';
 
@@ -42,9 +44,19 @@ function CreateTeam() {
 
   return (
     <section className="page create-team">
-      <h1>Create Team</h1>
+      <PageBanner
+        image="/images/cricket-team.png"
+        kicker={
+          <>
+            <Stumps size={16} /> Build your squad
+          </>
+        }
+        title="Create a Team"
+        subtitle="Give your squad a name and add your players. You can edit them anytime."
+        tone="tone-blue"
+      />
 
-      <form className="form" onSubmit={handleSubmit}>
+      <form className="form card-form" onSubmit={handleSubmit}>
         <label className="form-field">
           <span>Team name</span>
           <input
