@@ -5,7 +5,9 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import CreateTeam from './pages/CreateTeam';
 import CreateMatch from './pages/CreateMatch';
+import MatchSetup from './pages/MatchSetup';
 import LiveScore from './pages/LiveScore';
+import Scorecard from './pages/Scorecard';
 import MatchHistory from './pages/MatchHistory';
 import NotFound from './pages/NotFound';
 import './App.css';
@@ -25,7 +27,9 @@ function App() {
           <Route path="/teams/new" element={<CreateTeam />} />
           <Route path="/matches/new" element={<CreateMatch />} />
           <Route path="/matches" element={<MatchHistory />} />
+          <Route path="/matches/:id/setup" element={<MatchSetup />} />
           <Route path="/matches/:id/live" element={<LiveScore />} />
+          <Route path="/matches/:id/scorecard" element={<Scorecard />} />
           <Route path="/matches/:id" element={<RedirectToLive />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

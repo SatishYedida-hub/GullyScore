@@ -20,11 +20,19 @@ const advanceOver = (oversValue) => {
   return toOversFormat(completed, nextBalls);
 };
 
+const ballsToOvers = (balls = 0) => {
+  const safe = Math.max(0, Math.floor(Number(balls) || 0));
+  const completed = Math.floor(safe / BALLS_PER_OVER);
+  const inCurrent = safe % BALLS_PER_OVER;
+  return toOversFormat(completed, inCurrent);
+};
+
 const isExtra = (value) => value === 'wide' || value === 'no-ball';
 
 module.exports = {
   BALLS_PER_OVER,
   advanceOver,
+  ballsToOvers,
   splitOvers,
   isExtra,
 };

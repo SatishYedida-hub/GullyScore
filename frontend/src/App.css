@@ -365,6 +365,207 @@
 
 .page-actions {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ============== Panels (batting/bowling/this-over) ============== */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.panel-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  font-weight: 700;
+}
+.panel-title .muted {
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.muted {
+  color: var(--text-muted);
+}
+.small {
+  font-size: 13px;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.stats-table thead th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stats-table tbody td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.stats-table .row-striker td {
+  background: #fef9c3;
+}
+.strike-mark {
+  color: #ca8a04;
+  font-weight: 700;
+}
+.stats-table th:not(:first-child),
+.stats-table td:not(:first-child) {
+  text-align: center;
+  width: 52px;
+}
+.stats-table.full th:nth-child(2),
+.stats-table.full td:nth-child(2) {
+  text-align: left;
+  width: auto;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* This over ball pills */
+.this-over {
+  margin-top: 0;
+}
+.over-balls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ball-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+.ball-pill.ball-wicket {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.ball-pill.ball-extra {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+/* Action-required panel (new batsman / new bowler) */
+.action-required {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+.inline-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inline-row select {
+  flex: 1 1 200px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface);
+}
+
+/* Radio group (batting-team picker) */
+.radio-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 0 0;
+}
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+}
+fieldset.form-field {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Match list actions */
+.match-list-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.scoreboard-card.compact {
+  padding: 20px 16px;
 }
 
 /* ============== Responsive ============== */
@@ -391,6 +592,9 @@
   .run-btn {
     padding: 16px 0;
     font-size: 18px;
+  }
+  .panels {
+    grid-template-columns: 1fr;
   }
 }
 

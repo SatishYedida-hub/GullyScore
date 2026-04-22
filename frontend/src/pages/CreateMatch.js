@@ -10,6 +10,7 @@ function CreateMatch() {
   const [teams, setTeams] = useState([]);
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
+  const [battingTeam, setBattingTeam] = useState('teamA');
   const [overs, setOvers] = useState(20);
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,8 +54,9 @@ function CreateMatch() {
         teamA,
         teamB,
         overs: Number(overs),
+        battingTeam,
       });
-      navigate(`/matches/${data.data._id}/live`);
+      navigate(`/matches/${data.data._id}/setup`);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -111,6 +113,32 @@ function CreateMatch() {
               ))}
           </select>
         </label>
+
+        <fieldset className="form-field">
+          <span>Who bats first?</span>
+          <div className="radio-row">
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="battingTeam"
+                value="teamA"
+                checked={battingTeam === 'teamA'}
+                onChange={() => setBattingTeam('teamA')}
+              />
+              <span>{teamA || 'Team A'}</span>
+            </label>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="battingTeam"
+                value="teamB"
+                checked={battingTeam === 'teamB'}
+                onChange={() => setBattingTeam('teamB')}
+              />
+              <span>{teamB || 'Team B'}</span>
+            </label>
+          </div>
+        </fieldset>
 
         <label className="form-field">
           <span>Overs</span>

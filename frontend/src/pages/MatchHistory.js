@@ -64,23 +64,38 @@ function MatchHistory() {
     <section className="page match-history">
       <h1>Match History</h1>
       <ul className="match-list">
-        {matches.map((m) => (
-          <li key={m._id} className="match-list-item">
-            <div className="match-list-header">
-              <strong>{m.teamA}</strong> vs <strong>{m.teamB}</strong>
-              <span className={`badge badge-${m.status}`}>{m.status}</span>
-            </div>
-            <div className="match-list-meta">
-              <span>
-                {m.score?.runs ?? 0}/{m.score?.wickets ?? 0}
-                {' '}({formatOvers(m.score?.overs)} / {m.overs ?? '?'} ov)
-              </span>
-              <Link to={`/matches/${m._id}/live`} className="btn link">
-                View live
-              </Link>
-            </div>
-          </li>
-        ))}
+        {matches.map((m) => {
+          const battingTeamName =
+            m.battingTeam === 'teamA' ? m.teamA : m.teamB;
+          const liveTarget =
+            m.status === 'setup'
+              ? `/matches/${m._id}/setup`
+              : `/matches/${m._id}/live`;
+          return (
+            <li key={m._id} className="match-list-item">
+              <div className="match-list-header">
+                <strong>{m.teamA}</strong> vs <strong>{m.teamB}</strong>
+                <span className={`badge badge-${m.status}`}>{m.status}</span>
+              </div>
+              <div className="match-list-meta">
+                <span>
+                  {battingTeamName}: {m.score?.runs ?? 0}/{m.score?.wickets ?? 0}{' '}
+                  ({formatOvers(m.score?.overs)} / {m.overs ?? '?'} ov)
+                </span>
+                <div className="match-list-actions">
+                  <Link to={liveTarget} className="btn link">
+                    {m.status === 'setup' ? 'Set up' : 'View live'}
+                  </Link>
+                  {m.status !== 'setup' && (
+                    <Link to={`/matches/${m._id}/scorecard`} className="btn link">
+                      Scorecard
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
