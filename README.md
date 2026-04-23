@@ -125,12 +125,41 @@ Back in the Render dashboard:
 2. Open **gullyscore-backend → Environment** and set
    `CORS_ORIGIN=https://gullyscore-frontend.onrender.com`.
    Save — Render will restart the backend.
+3. (Recommended) In the same Environment tab, set `ADMIN_TOKEN` to a long
+   random string. This locks destructive actions (delete team, remove
+   player from team, delete roster player, delete match) so only someone
+   who has the key can perform them. See the **Admin (owner) key** section
+   below for how it works.
 
 ### 6. Verify
 
 - `https://gullyscore-backend.onrender.com/health` should return
   `Server is running`.
 - Open the frontend URL and try creating a team → creating a match → scoring.
+
+### Admin (owner) key
+
+To keep deletions to just yourself, set an `ADMIN_TOKEN` env var on the
+backend:
+
+```
+ADMIN_TOKEN=your-long-random-secret
+```
+
+- Any request to delete a team, remove a player from a team, delete a
+  roster player, or delete a match must include `X-Admin-Token: <value>`.
+- In the UI, click the **Admin** (🔒) button in the navbar, paste the same
+  value, and hit Unlock. It's stored in your browser's localStorage so you
+  don't have to re-enter it.
+- Delete buttons are **hidden** for anyone who hasn't unlocked. Clicking
+  **Lock** (🔓) in the navbar clears the stored key from that device.
+- If `ADMIN_TOKEN` is not set on the server, the lock is disabled and
+  deletes are open to everyone (the old default, convenient for local
+  dev). A warning is logged at startup so you notice.
+- Rotating the key: change `ADMIN_TOKEN` on Render → redeploy → re-enter
+  the new value on your device. Old devices still holding the old key are
+  automatically signed out on their next delete (the 403 response clears
+  the stored key).
 
 ### Notes on the free tier
 

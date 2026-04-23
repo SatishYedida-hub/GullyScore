@@ -2311,6 +2311,69 @@ fieldset.form-field {
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
 }
 
+/* ============ Admin lock/unlock toggle in the navbar ================ */
+.admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 250, 252, 0.35);
+  background: transparent;
+  color: var(--text-invert);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.admin-toggle:hover {
+  background: rgba(248, 250, 252, 0.1);
+  transform: translateY(-1px);
+}
+.admin-toggle.on {
+  background: #22c55e;
+  color: #052e16;
+  border-color: #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+}
+.admin-toggle.warn {
+  border-color: rgba(248, 250, 252, 0.25);
+  color: rgba(248, 250, 252, 0.75);
+}
+.admin-toggle-label {
+  letter-spacing: 0.02em;
+}
+
+.brand-admin-chip {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #052e16;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Admin login modal — content-specific rules only, reuses the shared
+   .modal / .modal-backdrop / .modal-actions styles. */
+.admin-modal {
+  max-width: 440px;
+}
+.admin-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.admin-modal-form code {
+  background: rgba(15, 23, 42, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 /* Base caption bar component. Shows the bilingual Telugu+English lines.
    Hidden outside meme mode because the <MemeCaption> component early-
    returns, but we still scope the bright styles to .meme-mode for safety. */

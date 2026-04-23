@@ -12,8 +12,10 @@ import {
   updatePlayerPhoto as apiUpdatePlayerPhoto,
 } from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
+import { useIsAdmin } from '../utils/adminMode';
 
 function Roster() {
+  const { canDelete } = useIsAdmin();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -238,13 +240,15 @@ function Roster() {
                     >
                       {p.photo ? 'Change' : '+ Photo'}
                     </button>
-                    <button
-                      className="btn danger small-btn"
-                      disabled={rowBusy}
-                      onClick={() => handleDelete(p)}
-                    >
-                      {rowBusy ? 'Removing…' : 'Remove'}
-                    </button>
+                    {canDelete && (
+                      <button
+                        className="btn danger small-btn"
+                        disabled={rowBusy}
+                        onClick={() => handleDelete(p)}
+                      >
+                        {rowBusy ? 'Removing…' : 'Remove'}
+                      </button>
+                    )}
                   </div>
                 </li>
               );

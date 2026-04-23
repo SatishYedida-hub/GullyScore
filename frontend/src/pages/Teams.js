@@ -14,8 +14,10 @@ import {
 } from '../services/teamService';
 import { getRoster } from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
+import { useIsAdmin } from '../utils/adminMode';
 
 function Teams() {
+  const { canDelete } = useIsAdmin();
   const [teams, setTeams] = useState([]);
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -215,6 +217,7 @@ function Teams() {
               team={team}
               roster={roster}
               busyId={busyId}
+              canDelete={canDelete}
               onDeleteTeam={handleDeleteTeam}
               onRemovePlayer={handleRemovePlayer}
               onAddPlayer={handleAddPlayer}
@@ -242,6 +245,7 @@ function TeamCard({
   team,
   roster,
   busyId,
+  canDelete,
   onDeleteTeam,
   onRemovePlayer,
   onAddPlayer,
@@ -301,13 +305,15 @@ function TeamCard({
           >
             {team.photo ? 'Change photo' : '+ Add photo'}
           </button>
-          <button
-            className="btn danger small-btn"
-            disabled={teamBusy}
-            onClick={() => onDeleteTeam(team)}
-          >
-            {teamBusy ? 'Deleting…' : 'Delete team'}
-          </button>
+          {canDelete && (
+            <button
+              className="btn danger small-btn"
+              disabled={teamBusy}
+              onClick={() => onDeleteTeam(team)}
+            >
+              {teamBusy ? 'Deleting…' : 'Delete team'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -321,14 +327,16 @@ function TeamCard({
             return (
               <li key={player} className="player-chip">
                 <span>{player}</span>
-                <button
-                  className="chip-remove"
-                  title={`Remove ${player}`}
-                  disabled={playerBusy}
-                  onClick={() => onRemovePlayer(team, player)}
-                >
-                  {playerBusy ? '…' : '×'}
-                </button>
+                {canDelete && (
+                  <button
+                    className="chip-remove"
+                    title={`Remove ${player}`}
+                    disabled={playerBusy}
+                    onClick={() => onRemovePlayer(team, player)}
+                  >
+                    {playerBusy ? '…' : '×'}
+                  </button>
+                )}
               </li>
             );
           })}

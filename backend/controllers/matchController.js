@@ -152,7 +152,9 @@ exports.deleteMatch = async (req, res, next) => {
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
 
-    requireScorer(match, req);
+    // Admin gate is enforced by the route (see routes/matchRoutes.js). A
+    // logged-in match scorer is NOT enough to delete — the user explicitly
+    // wanted match deletion locked to the app owner.
 
     await matchService.deleteMatch(match);
     return res.status(200).json({

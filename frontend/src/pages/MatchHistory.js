@@ -9,6 +9,7 @@ import {
   getAllMatches,
 } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
+import { useIsAdmin } from '../utils/adminMode';
 
 const formatOvers = (overs) => {
   if (typeof overs !== 'number') return '0.0';
@@ -23,6 +24,7 @@ const inningsSummary = (inn, match) => {
 };
 
 function MatchHistory() {
+  const { canDelete } = useIsAdmin();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -220,14 +222,16 @@ function MatchHistory() {
                       Scorecard
                     </Link>
                   )}
-                  <button
-                    type="button"
-                    className="btn danger small-btn"
-                    disabled={rowBusy}
-                    onClick={() => handleDelete(m)}
-                  >
-                    {rowBusy ? 'Deleting…' : 'Delete'}
-                  </button>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="btn danger small-btn"
+                      disabled={rowBusy}
+                      onClick={() => handleDelete(m)}
+                    >
+                      {rowBusy ? 'Deleting…' : 'Delete'}
+                    </button>
+                  )}
                 </div>
               </div>
             </li>

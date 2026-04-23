@@ -17,7 +17,12 @@ const corsOrigin = process.env.CORS_ORIGIN
 app.use(
   cors({
     origin: corsOrigin,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Scorer-Token'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Scorer-Token',
+      'X-Admin-Token',
+    ],
   })
 );
 // Bumped from the 100kb default so photo uploads (base64 data URLs) fit
