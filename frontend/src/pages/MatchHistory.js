@@ -161,13 +161,24 @@ function MatchHistory() {
                     <strong>{m.teamB}</strong>
                   </span>
                 </div>
-                <span className={`badge badge-${m.status}`}>{m.status}</span>
+                <span className="badge-row">
+                  <span
+                    className={`badge badge-format badge-format-${
+                      m.format || 'limited'
+                    }`}
+                  >
+                    {m.format === 'test' ? 'TEST' : 'LTD'}
+                  </span>
+                  <span className={`badge badge-${m.status}`}>{m.status}</span>
+                </span>
               </div>
 
               <div className="match-list-innings">
                 {innings.length === 0 ? (
                   <span className="muted small">
-                    {m.overs} overs · not started
+                    {m.format === 'test'
+                      ? 'Test · not started'
+                      : `${m.overs} overs · not started`}
                   </span>
                 ) : (
                   innings.map((inn) => (
@@ -185,7 +196,11 @@ function MatchHistory() {
               </div>
 
               <div className="match-list-meta">
-                <span className="muted small">{m.overs} overs match</span>
+                <span className="muted small">
+                  {m.format === 'test'
+                    ? 'Test match'
+                    : `${m.overs} overs match`}
+                </span>
                 <div className="match-list-actions">
                   <Link to={liveTarget} className="btn link">
                     {m.status === 'setup'

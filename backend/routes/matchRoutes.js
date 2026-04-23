@@ -14,6 +14,8 @@ router.post('/:id/score', matchController.updateScore);
 router.post('/:id/new-batsman', matchController.newBatsman);
 router.post('/:id/new-bowler', matchController.newBowler);
 router.post('/:id/undo', matchController.undoLastAction);
+router.post('/:id/declare', matchController.declareInnings);
+router.post('/:id/draw', matchController.endAsDraw);
 router.post('/:id/transfer-scorer', matchController.transferScorer);
 
 module.exports = router;

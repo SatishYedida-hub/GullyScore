@@ -40,6 +40,12 @@ export const newBowler = (id, payload) =>
 export const undoLastAction = (id) =>
   api.post(`/matches/${id}/undo`, {}, withScorer(id));
 
+export const declareInnings = (id) =>
+  api.post(`/matches/${id}/declare`, {}, withScorer(id));
+
+export const endAsDraw = (id) =>
+  api.post(`/matches/${id}/draw`, {}, withScorer(id));
+
 export const deleteMatch = (id) =>
   api.delete(`/matches/${id}`, withScorer(id));
 

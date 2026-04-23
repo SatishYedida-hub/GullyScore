@@ -41,7 +41,7 @@ const requireScorer = (match, req) => {
 
 exports.createMatch = async (req, res, next) => {
   try {
-    const { teamA, teamB, overs, battingTeam } = req.body || {};
+    const { teamA, teamB, overs, battingTeam, format } = req.body || {};
 
     if (!teamA || typeof teamA !== 'string' || !teamA.trim()) {
       return next(httpError(400, 'teamA is required'));
@@ -57,7 +57,15 @@ exports.createMatch = async (req, res, next) => {
       return next(httpError(400, 'teamA and teamB must be different'));
     }
 
-    if (overs !== undefined) {
+    const fmt = format || 'limited';
+    if (fmt !== 'limited' && fmt !== 'test') {
+      return next(httpError(400, "format must be 'limited' or 'test'"));
+    }
+
+    if (fmt === 'limited') {
+      if (overs === undefined) {
+        return next(httpError(400, 'overs is required for limited matches'));
+      }
       if (typeof overs !== 'number' || !Number.isFinite(overs) || overs <= 0) {
         return next(httpError(400, 'overs must be a positive number'));
       }
@@ -81,8 +89,9 @@ exports.createMatch = async (req, res, next) => {
     const { match, scorerToken } = await matchService.createMatch({
       teamA: nameA,
       teamB: nameB,
-      overs,
+      overs: fmt === 'test' ? undefined : overs,
       battingTeam: battingTeam || 'teamA',
+      format: fmt,
     });
 
     return res.status(201).json({
@@ -228,27 +237,44 @@ exports.setupInnings2 = async (req, res, next) => {
     const payloadError = validateSetupPayload(req.body);
     if (payloadError) return next(httpError(400, payloadError));
 
-    const { striker, nonStriker, bowler } = req.body;
+    const { striker, nonStriker, bowler, battingTeam: pickedTeam } =
+      req.body;
 
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'innings-break') {
       return next(
-        httpError(400, 'Second innings can only be set up at innings break')
+        httpError(400, 'Next innings can only be set up at innings break')
       );
     }
 
     requireScorer(match, req);
 
-    // After innings 1, batting team flips; service handles the actual swap.
-    // Use a temp-swapped clone for validation.
+    // Limited-overs always flips; test lets the scorer choose (for follow-on).
+    let nextTeam;
+    if (matchService.isTest(match)) {
+      if (
+        pickedTeam !== undefined &&
+        pickedTeam !== 'teamA' &&
+        pickedTeam !== 'teamB'
+      ) {
+        return next(
+          httpError(400, "battingTeam must be 'teamA' or 'teamB'")
+        );
+      }
+      nextTeam = pickedTeam || matchService.defaultNextBattingTeam(match);
+    } else {
+      nextTeam = match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+    }
+
+    // Build a validation-only pseudo-match where the "current innings"
+    // reflects the team about to bat.
     const pseudoMatch = {
       ...match.toObject(),
-      battingTeam: match.battingTeam === 'teamA' ? 'teamB' : 'teamA',
-      innings: [],
+      innings: [{ battingTeam: nextTeam }],
+      teamAPlayers: match.teamAPlayers,
+      teamBPlayers: match.teamBPlayers,
     };
-    pseudoMatch.teamAPlayers = match.teamAPlayers;
-    pseudoMatch.teamBPlayers = match.teamBPlayers;
     const batPlayers = matchService.getBattingTeamPlayers(pseudoMatch);
     const bowlPlayers = matchService.getBowlingTeamPlayers(pseudoMatch);
 
@@ -262,14 +288,16 @@ exports.setupInnings2 = async (req, res, next) => {
       return next(httpError(400, `${bowler} is not in the bowling team`));
     }
 
-    const updated = await matchService.setupInnings2(match, {
+    const updated = await matchService.startNextInnings(match, {
       striker,
       nonStriker,
       bowler,
+      battingTeam: nextTeam,
     });
 
+    const n = updated.innings.length;
     return res.status(200).json({
-      message: 'Second innings started',
+      message: `Innings ${n} started`,
       data: toResponse(updated),
       canUndo: false,
     });
@@ -478,6 +506,46 @@ exports.undoLastAction = async (req, res, next) => {
     });
   } catch (error) {
     if (error.name === 'ValidationError') error.status = 400;
+    return next(error);
+  }
+};
+
+exports.declareInnings = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
+
+    const updated = await matchService.declareInnings(match);
+    return res.status(200).json({
+      message: 'Innings declared',
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.endAsDraw = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
+
+    const updated = await matchService.endAsDraw(match);
+    return res.status(200).json({
+      message: 'Match ended as draw',
+      data: toResponse(updated),
+      canUndo: (updated.history || []).length > 0,
+    });
+  } catch (error) {
     return next(error);
   }
 };

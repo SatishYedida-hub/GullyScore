@@ -4,6 +4,8 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import TeamAvatar from '../components/TeamAvatar';
 import {
   currentInningsOf,
+  declareInnings as apiDeclareInnings,
+  endAsDraw as apiEndAsDraw,
   getMatchById,
   newBatsman as apiNewBatsman,
   newBowler as apiNewBowler,
@@ -73,6 +75,10 @@ function LiveScore() {
   const [transferStage, setTransferStage] = useState('confirm'); // 'confirm' | 'done'
   const [newToken, setNewToken] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Test-format confirmation modals.
+  const [declareOpen, setDeclareOpen] = useState(false);
+  const [drawOpen, setDrawOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -159,13 +165,20 @@ function LiveScore() {
   const nonStriker = inn ? (inn.batsmen || []).find((b) => b.name === inn.nonStriker) : null;
   const bowler = inn ? (inn.bowlers || []).find((b) => b.name === inn.currentBowler) : null;
 
-  const isSecondInnings = inn && inn.number === 2;
-  const runsNeeded = isSecondInnings && match.target
-    ? Math.max(0, match.target - (inn.score?.runs ?? 0))
-    : null;
-  const ballsRemaining = isSecondInnings && match.overs
-    ? Math.max(0, match.overs * 6 - (inn.score?.balls ?? 0))
-    : null;
+  const isTestMatch = match.format === 'test';
+  const maxInnCount = isTestMatch ? 4 : 2;
+  // Chase innings = last one: innings 2 for limited, innings 4 for test.
+  const isChaseInnings = inn && inn.number === maxInnCount;
+  const runsNeeded =
+    isChaseInnings && match.target
+      ? Math.max(0, match.target - (inn.score?.runs ?? 0))
+      : null;
+  const ballsRemaining =
+    isChaseInnings && !isTestMatch && match.overs
+      ? Math.max(0, match.overs * 6 - (inn.score?.balls ?? 0))
+      : null;
+
+  const teamNameOf = (key) => (key === 'teamA' ? match.teamA : match.teamB);
 
   const handleWriteError = (err) => {
     // A 403 means our saved key no longer matches — most often because the
@@ -346,6 +359,36 @@ function LiveScore() {
     setNewToken('');
   };
 
+  const submitDeclare = async () => {
+    setDeclareOpen(false);
+    setError(null);
+    try {
+      setBusy(true);
+      const { data } = await apiDeclareInnings(id);
+      setMatch(data.data);
+      setCanUndo(!!data.canUndo);
+    } catch (err) {
+      handleWriteError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitDraw = async () => {
+    setDrawOpen(false);
+    setError(null);
+    try {
+      setBusy(true);
+      const { data } = await apiEndAsDraw(id);
+      setMatch(data.data);
+      setCanUndo(!!data.canUndo);
+    } catch (err) {
+      handleWriteError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="page live-score">
       <header className="score-header score-header-pretty">
@@ -362,8 +405,10 @@ function LiveScore() {
             </span>
           </div>
           <p className="match-meta">
-            {match.overs} overs · Innings {inn?.number ?? '–'} ·{' '}
-            <strong>{battingTeamName}</strong> batting
+            {isTestMatch
+              ? `Test · Innings ${inn?.number ?? '–'} of 4`
+              : `${match.overs} overs · Innings ${inn?.number ?? '–'}`}{' '}
+            · <strong>{battingTeamName}</strong> batting
           </p>
         </div>
         <span className={`badge badge-${match.status}`}>{match.status}</span>
@@ -431,16 +476,13 @@ function LiveScore() {
           <div className="victory-text">
             <span className="victory-kicker">Full time</span>
             <h2>{match.result || 'Match completed'}</h2>
-            <p className="muted">
-              {match.teamA} {match.innings?.[0]?.score?.runs ?? 0}/
-              {match.innings?.[0]?.score?.wickets ?? 0}
-              {match.innings?.[1] && (
-                <>
-                  {' '}
-                  · {match.teamB} {match.innings[1].score.runs}/
-                  {match.innings[1].score.wickets}
-                </>
-              )}
+            <p className="muted innings-summary-line">
+              {(match.innings || []).map((i, idx) => (
+                <span key={idx} className="summary-pill">
+                  {teamNameOf(i.battingTeam)} {i.score.runs}/{i.score.wickets}
+                  {!isTestMatch ? ` (${(i.score.overs ?? 0).toFixed(1)})` : ''}
+                </span>
+              ))}
             </p>
             <div className="victory-actions">
               <Link to={`/matches/${id}/scorecard`} className="btn primary">
@@ -454,13 +496,16 @@ function LiveScore() {
         </div>
       )}
 
-      {match.innings && match.innings.length === 2 && (
+      {match.innings && match.innings.length >= 2 && (
         <div className="innings-summary">
-          <span className="muted small">1st innings</span>{' '}
-          <strong>
-            {match.innings[0].score.runs}/{match.innings[0].score.wickets}
-          </strong>{' '}
-          ({(match.innings[0].score.overs ?? 0).toFixed(1)})
+          {match.innings.slice(0, -1).map((i, idx) => (
+            <span key={idx} className="summary-pill">
+              <span className="muted small">Inn {i.number}</span>{' '}
+              <strong>{teamNameOf(i.battingTeam)}</strong>{' '}
+              {i.score.runs}/{i.score.wickets}
+              {!isTestMatch && ` (${(i.score.overs ?? 0).toFixed(1)})`}
+            </span>
+          ))}
         </div>
       )}
 
@@ -474,11 +519,13 @@ function LiveScore() {
           <span className="score-overs-value">
             {formatOvers(inn?.score?.overs)}
           </span>
-          <span className="score-overs-label">of {match.overs} overs</span>
+          <span className="score-overs-label">
+            {isTestMatch ? 'overs bowled' : `of ${match.overs} overs`}
+          </span>
         </div>
       </div>
 
-      {isSecondInnings && !isCompleted && (
+      {isChaseInnings && !isCompleted && (
         <div className="target-banner">
           <div>
             <span className="target-label">Target</span>
@@ -487,7 +534,8 @@ function LiveScore() {
           <div>
             <span className="target-label">Need</span>
             <span className="target-value">
-              {runsNeeded} from {ballsRemaining} balls
+              {runsNeeded}
+              {ballsRemaining !== null ? ` from ${ballsRemaining} balls` : ''}
             </span>
           </div>
         </div>
@@ -592,6 +640,29 @@ function LiveScore() {
           >
             ↶ Undo last action
           </button>
+
+          {isTestMatch && (
+            <>
+              <button
+                className="btn"
+                disabled={busy || scoringLocked}
+                onClick={() => setDeclareOpen(true)}
+                title="End this innings right now"
+              >
+                Declare innings
+              </button>
+              {(match.innings?.length || 0) >= 3 && (
+                <button
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => setDrawOpen(true)}
+                  title="Agree to end the match as a draw"
+                >
+                  End as draw
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -786,6 +857,58 @@ function LiveScore() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {declareOpen && (
+        <div className="modal-backdrop" onClick={() => setDeclareOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Declare innings?</h3>
+            <p className="muted small">
+              {battingTeamName} will end their innings now at{' '}
+              <strong>
+                {inn?.score?.runs ?? 0}/{inn?.score?.wickets ?? 0}
+              </strong>
+              . The match will move to the next innings.
+            </p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setDeclareOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn primary"
+                disabled={busy}
+                onClick={submitDeclare}
+              >
+                Declare
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {drawOpen && (
+        <div className="modal-backdrop" onClick={() => setDrawOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>End match as a draw?</h3>
+            <p className="muted small">
+              Both captains agree the match will finish without a result. This
+              completes the match and can be undone only by reverting with
+              "Undo last action".
+            </p>
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setDrawOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn danger"
+                disabled={busy}
+                onClick={submitDraw}
+              >
+                End as draw
+              </button>
+            </div>
           </div>
         </div>
       )}

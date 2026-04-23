@@ -73,6 +73,14 @@ const matchSchema = new mongoose.Schema(
     teamAPhoto: { type: String, default: '' },
     teamBPhoto: { type: String, default: '' },
 
+    // 'limited' = one innings per side with an overs cap (T20/ODI-style).
+    // 'test'    = up to 4 innings with no overs cap; innings end on all-out
+    //             or declaration; the match can also end as a draw.
+    format: {
+      type: String,
+      enum: ['limited', 'test'],
+      default: 'limited',
+    },
     overs: { type: Number },
     battingTeam: { type: String, enum: ['teamA', 'teamB'], default: 'teamA' },
 

@@ -15,6 +15,7 @@ function CreateMatch() {
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
   const [battingTeam, setBattingTeam] = useState('teamA');
+  const [format, setFormat] = useState('limited');
   const [overs, setOvers] = useState(20);
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -62,7 +63,8 @@ function CreateMatch() {
       const { data } = await createMatch({
         teamA,
         teamB,
-        overs: Number(overs),
+        format,
+        ...(format === 'limited' ? { overs: Number(overs) } : {}),
         battingTeam,
       });
       // Persist the scorer key for this device immediately so later requests
@@ -199,6 +201,43 @@ function CreateMatch() {
         </label>
 
         <fieldset className="form-field">
+          <span>Format</span>
+          <div className="radio-row">
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="format"
+                value="limited"
+                checked={format === 'limited'}
+                onChange={() => setFormat('limited')}
+              />
+              <span>
+                Limited overs
+                <span className="muted small block">
+                  One innings per side with an overs cap (T20/ODI-style).
+                </span>
+              </span>
+            </label>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="format"
+                value="test"
+                checked={format === 'test'}
+                onChange={() => setFormat('test')}
+              />
+              <span>
+                Test (4 innings)
+                <span className="muted small block">
+                  No overs limit; innings end on all-out or declaration. Can
+                  end as a draw.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset className="form-field">
           <span>Who bats first?</span>
           <div className="radio-row">
             <label className="radio-option">
@@ -224,17 +263,19 @@ function CreateMatch() {
           </div>
         </fieldset>
 
-        <label className="form-field">
-          <span>Overs</span>
-          <input
-            type="number"
-            min="1"
-            max="50"
-            value={overs}
-            onChange={(e) => setOvers(e.target.value)}
-            required
-          />
-        </label>
+        {format === 'limited' && (
+          <label className="form-field">
+            <span>Overs</span>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={overs}
+              onChange={(e) => setOvers(e.target.value)}
+              required
+            />
+          </label>
+        )}
 
         <div className="form-actions">
           <button type="submit" className="btn primary" disabled={submitting}>

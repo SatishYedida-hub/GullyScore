@@ -2198,3 +2198,86 @@ fieldset.form-field {
   }
 }
 
+/* Test cricket / format ------------------------------------------------- */
+
+/* Small helper so muted hints under radio-option labels wrap to a new line. */
+.radio-option span .block {
+  display: block;
+  margin-top: 2px;
+}
+
+/* Row that groups format + status badges in the match list header. */
+.badge-row {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Compact "LTD" / "TEST" pill shown next to the live/completed status. */
+.badge-format {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.badge-format-limited {
+  background: #ecfeff;
+  color: #0e7490;
+  border-color: #a5f3fc;
+}
+.badge-format-test {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+/* A chip used to summarize a completed innings inline (live score,
+   match-setup, full-time banner). */
+.summary-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  margin: 2px 4px 2px 0;
+  background: var(--surface-muted, #f1f5f9);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+/* Victory banner innings line becomes a flex container when multiple
+   pills may appear (test cricket). */
+.innings-summary-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.innings-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+/* Undo row hosts declare/draw on test matches too; make sure buttons wrap
+   on smaller screens. */
+.undo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* The batting-team picker at test innings breaks sits visually under the
+   innings summary. A touch of breathing room keeps it distinct. */
+.follow-on-field {
+  margin-top: 4px;
+}
+

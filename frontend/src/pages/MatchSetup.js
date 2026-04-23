@@ -25,6 +25,9 @@ function MatchSetup() {
   const [striker, setStriker] = useState('');
   const [nonStriker, setNonStriker] = useState('');
   const [bowler, setBowler] = useState('');
+  // For test at innings-break: scorer picks who bats next (follow-on support).
+  // Initialized once the match loads.
+  const [pickedBattingTeam, setPickedBattingTeam] = useState(null);
 
   const [takeoverInput, setTakeoverInput] = useState('');
   const [takeoverError, setTakeoverError] = useState(null);
@@ -48,15 +51,35 @@ function MatchSetup() {
     fetchMatch();
   }, [fetchMatch]);
 
-  const isInnings2 = match?.status === 'innings-break';
+  const isInningsBreak = match?.status === 'innings-break';
+  const isTestMatch = match?.format === 'test';
+  const inningsCount = match?.innings?.length || 0;
+  // For test, innings 2/3/4 all come through this same "innings break" flow.
+  const nextInningsNumber = isInningsBreak ? inningsCount + 1 : 1;
 
-  const battingTeamKey = useMemo(() => {
+  // Default: for limited, always flip. For test, suggest whichever team has
+  // batted fewer times (follow-on neutral default).
+  const defaultNextTeam = useMemo(() => {
     if (!match) return 'teamA';
-    if (isInnings2) {
+    if (!isInningsBreak) return match.battingTeam;
+    if (!isTestMatch) {
       return match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
     }
-    return match.battingTeam;
-  }, [match, isInnings2]);
+    const timesBatted = (key) =>
+      (match.innings || []).filter((i) => i.battingTeam === key).length;
+    return timesBatted('teamA') <= timesBatted('teamB') ? 'teamA' : 'teamB';
+  }, [match, isInningsBreak, isTestMatch]);
+
+  // Seed the picked batting team once we know the default.
+  useEffect(() => {
+    if (pickedBattingTeam == null && match) {
+      setPickedBattingTeam(defaultNextTeam);
+    }
+  }, [defaultNextTeam, match, pickedBattingTeam]);
+
+  const battingTeamKey = isInningsBreak && isTestMatch && pickedBattingTeam
+    ? pickedBattingTeam
+    : defaultNextTeam;
 
   if (loading) {
     return (
@@ -135,7 +158,9 @@ function MatchSetup() {
             </>
           }
           title="Only the scorer can set up this match"
-          subtitle={`${match.teamA} vs ${match.teamB} — ${match.overs} overs`}
+          subtitle={`${match.teamA} vs ${match.teamB} — ${
+            isTestMatch ? 'Test match' : `${match.overs} overs`
+          }`}
           tone="tone-blue"
         />
         <div className="card-form">
@@ -189,7 +214,14 @@ function MatchSetup() {
     );
   }
 
-  const firstInnings = match.innings && match.innings[0];
+  const handlePickBattingTeam = (key) => {
+    if (key === battingTeamKey) return;
+    setPickedBattingTeam(key);
+    // Players from the old batting/bowling sides no longer apply.
+    setStriker('');
+    setNonStriker('');
+    setBowler('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -206,8 +238,17 @@ function MatchSetup() {
 
     try {
       setSubmitting(true);
-      const call = isInnings2 ? setupInnings2 : setupMatch;
-      await call(id, { striker, nonStriker, bowler });
+      if (isInningsBreak) {
+        // For test, pass the chosen batting team; for limited it's ignored.
+        await setupInnings2(id, {
+          striker,
+          nonStriker,
+          bowler,
+          ...(isTestMatch ? { battingTeam: battingTeamKey } : {}),
+        });
+      } else {
+        await setupMatch(id, { striker, nonStriker, bowler });
+      }
       navigate(`/matches/${id}/live`);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -216,20 +257,34 @@ function MatchSetup() {
     }
   };
 
+  const bannerTitle = !isInningsBreak
+    ? 'Match Setup'
+    : isTestMatch
+    ? `Innings ${nextInningsNumber} setup`
+    : 'Second Innings Setup';
+  const bannerKicker = !isInningsBreak
+    ? 'Toss complete'
+    : isTestMatch
+    ? `End of innings ${inningsCount}`
+    : 'Innings break';
+  const bannerSubtitle = isTestMatch
+    ? `Test match — ${battingTeamName} to bat${isInningsBreak ? ' next.' : ' first.'}`
+    : `${match.overs} overs match — ${battingTeamName} to bat${
+        isInningsBreak ? ' now.' : ' first.'
+      }`;
+
   return (
     <section className="page match-setup">
       <PageBanner
-        image={isInnings2 ? '/images/cricket-action.png' : '/images/cricket-hero.png'}
+        image={isInningsBreak ? '/images/cricket-action.png' : '/images/cricket-hero.png'}
         kicker={
           <>
-            <CricketBall size={16} /> {isInnings2 ? 'Innings break' : 'Toss complete'}
+            <CricketBall size={16} /> {bannerKicker}
           </>
         }
-        title={isInnings2 ? 'Second Innings Setup' : 'Match Setup'}
-        subtitle={`${match.overs} overs match — ${battingTeamName} to bat${
-          isInnings2 ? ' now.' : ' first.'
-        }`}
-        tone={isInnings2 ? 'tone-orange' : 'tone-blue'}
+        title={bannerTitle}
+        subtitle={bannerSubtitle}
+        tone={isInningsBreak ? 'tone-orange' : 'tone-blue'}
       />
 
       <div className="versus-preview">
@@ -254,15 +309,23 @@ function MatchSetup() {
         </div>
       </div>
 
-      {isInnings2 && firstInnings && (
+      {isInningsBreak && (match.innings || []).length > 0 && (
+        <div className="innings-summary">
+          {(match.innings || []).map((i) => {
+            const tname = i.battingTeam === 'teamA' ? match.teamA : match.teamB;
+            return (
+              <span key={i.number} className="summary-pill">
+                <span className="muted small">Inn {i.number}</span>{' '}
+                <strong>{tname}</strong> {i.score.runs}/{i.score.wickets}
+                {!isTestMatch && ` (${(i.score.overs ?? 0).toFixed(1)})`}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {isInningsBreak && !isTestMatch && match.target && (
         <div className="target-banner">
-          <div>
-            <span className="target-label">First innings</span>
-            <span className="target-value">
-              {firstInnings.score.runs}/{firstInnings.score.wickets}{' '}
-              ({(firstInnings.score.overs ?? 0).toFixed(1)})
-            </span>
-          </div>
           <div>
             <span className="target-label">Target</span>
             <span className="target-value">
@@ -270,6 +333,50 @@ function MatchSetup() {
             </span>
           </div>
         </div>
+      )}
+
+      {isInningsBreak && isTestMatch && (
+        <fieldset className="form-field follow-on-field">
+          <span>Who bats next?</span>
+          <div className="radio-row">
+            {['teamA', 'teamB'].map((key) => {
+              const tname = key === 'teamA' ? match.teamA : match.teamB;
+              const timesBatted = (match.innings || []).filter(
+                (i) => i.battingTeam === key
+              ).length;
+              return (
+                <label key={key} className="radio-option">
+                  <input
+                    type="radio"
+                    name="next-batting-team"
+                    value={key}
+                    checked={battingTeamKey === key}
+                    onChange={() => handlePickBattingTeam(key)}
+                  />
+                  <span>
+                    {tname}
+                    <span className="muted small block">
+                      {timesBatted === 0
+                        ? 'Yet to bat'
+                        : `Already batted ${timesBatted}x`}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {nextInningsNumber === 3 && (
+            <p className="muted small">
+              Tip: if you want to enforce the follow-on, pick the trailing team
+              to bat again.
+            </p>
+          )}
+          {nextInningsNumber === 4 && (
+            <p className="muted small">
+              Innings 4: the chosen team is batting to chase the remaining lead.
+            </p>
+          )}
+        </fieldset>
       )}
 
       <form className="form" onSubmit={handleSubmit}>
@@ -319,7 +426,13 @@ function MatchSetup() {
 
         <div className="form-actions">
           <button type="submit" className="btn primary" disabled={submitting}>
-            {submitting ? 'Starting…' : isInnings2 ? 'Start Chase' : 'Start Innings'}
+            {submitting
+              ? 'Starting…'
+              : !isInningsBreak
+              ? 'Start Innings'
+              : isTestMatch
+              ? `Start Innings ${nextInningsNumber}`
+              : 'Start Chase'}
           </button>
         </div>
 

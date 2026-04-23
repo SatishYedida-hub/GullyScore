@@ -20,6 +20,19 @@ const currentInnings = (match) => {
   return match.innings[match.innings.length - 1];
 };
 
+// Format helpers -------------------------------------------------------
+
+const isTest = (match) => match.format === 'test';
+
+const maxInnings = (match) => (isTest(match) ? 4 : 2);
+
+// Total runs scored so far by a given side across all innings.
+const aggregateRunsFor = (match, teamKey) =>
+  (match.innings || [])
+    .filter((i) => i.battingTeam === teamKey)
+    .reduce((sum, i) => sum + (i.score.runs || 0), 0);
+
+
 const getBattingTeamPlayers = (match) => {
   const inn = currentInnings(match);
   const team = inn ? inn.battingTeam : match.battingTeam;
@@ -38,7 +51,13 @@ const findMissingTeams = async (names) => {
   return names.filter((n) => !existingNames.has(n));
 };
 
-const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
+const createMatch = async ({
+  teamA,
+  teamB,
+  overs,
+  battingTeam = 'teamA',
+  format = 'limited',
+}) => {
   const teams = await Team.find({ name: { $in: [teamA, teamB] } });
   const aDoc = teams.find((t) => t.name === teamA);
   const bDoc = teams.find((t) => t.name === teamB);
@@ -53,7 +72,9 @@ const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
     // Snapshot the current crests so scorecards survive later team edits.
     teamAPhoto: aDoc ? aDoc.photo || '' : '',
     teamBPhoto: bDoc ? bDoc.photo || '' : '',
-    overs,
+    format,
+    // Test matches have no overs cap; ignore whatever was passed.
+    overs: format === 'test' ? undefined : overs,
     battingTeam,
     scorerToken,
   });
@@ -153,15 +174,57 @@ const setupMatch = async (match, { striker, nonStriker, bowler }) => {
   return match.save();
 };
 
-const setupInnings2 = async (match, { striker, nonStriker, bowler }) => {
-  const secondBattingTeam =
-    match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+/**
+ * For limited overs, the opening innings always flips teams. For test, the
+ * scorer picks who bats next so we can honor follow-on (or not).
+ */
+const defaultNextBattingTeam = (match) => {
+  if (!isTest(match)) {
+    // Limited: always the team that hasn't batted this match.
+    return match.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+  }
+  const timesBatted = (key) =>
+    match.innings.filter((i) => i.battingTeam === key).length;
+  // Suggest the team that has batted fewer times as the default for test.
+  return timesBatted('teamA') <= timesBatted('teamB') ? 'teamA' : 'teamB';
+};
+
+/**
+ * Start the next innings (2, 3, or 4). For test formats a `battingTeam`
+ * choice is honored; for limited it is derived from the first innings.
+ * Computes the chase target when appropriate (innings 2 of limited, innings
+ * 4 of test).
+ */
+const startNextInnings = async (match, { striker, nonStriker, bowler, battingTeam }) => {
+  const nextNumber = (match.innings?.length || 0) + 1;
+  if (nextNumber > maxInnings(match)) {
+    const err = new Error('All innings have already been played');
+    err.status = 400;
+    throw err;
+  }
+  const pickedTeam = battingTeam || defaultNextBattingTeam(match);
+  if (pickedTeam !== 'teamA' && pickedTeam !== 'teamB') {
+    const err = new Error("battingTeam must be 'teamA' or 'teamB'");
+    err.status = 400;
+    throw err;
+  }
+  if (isTest(match) && nextNumber === 4) {
+    // Target is fixed once innings 4 starts, regardless of who bats.
+    const opponent = pickedTeam === 'teamA' ? 'teamB' : 'teamA';
+    const raw =
+      aggregateRunsFor(match, opponent) - aggregateRunsFor(match, pickedTeam) + 1;
+    match.target = Math.max(1, raw);
+  }
   match.innings.push(
-    buildInningsPayload(2, secondBattingTeam, striker, nonStriker, bowler)
+    buildInningsPayload(nextNumber, pickedTeam, striker, nonStriker, bowler)
   );
   match.status = 'live';
   return match.save();
 };
+
+// Backwards-compatible wrapper for limited-overs second innings.
+const setupInnings2 = async (match, payload) =>
+  startNextInnings(match, payload);
 
 const findBatsmanEntry = (inn, name) => inn.batsmen.find((b) => b.name === name);
 const findBowlerEntry = (inn, name) => inn.bowlers.find((b) => b.name === name);
@@ -196,7 +259,56 @@ const buildLabel = ({ wicket, extra, runs }) => {
   return String(runs);
 };
 
+// Check whether the match has just been decided by an innings victory
+// (test format only). Returns the result string, or '' if no such victory.
+const checkInningsVictory = (match) => {
+  if (!isTest(match) || match.innings.length !== 3) return '';
+  const timesBatted = (key) =>
+    match.innings.filter((i) => i.battingTeam === key).length;
+  const aTimes = timesBatted('teamA');
+  const bTimes = timesBatted('teamB');
+  const aRuns = aggregateRunsFor(match, 'teamA');
+  const bRuns = aggregateRunsFor(match, 'teamB');
+
+  // The team that batted once leads the team that batted twice -> innings win.
+  if (aTimes === 1 && bTimes === 2 && aRuns > bRuns) {
+    return `${match.teamA} won by an innings and ${aRuns - bRuns} run${
+      aRuns - bRuns === 1 ? '' : 's'
+    }`;
+  }
+  if (bTimes === 1 && aTimes === 2 && bRuns > aRuns) {
+    return `${match.teamB} won by an innings and ${bRuns - aRuns} run${
+      bRuns - aRuns === 1 ? '' : 's'
+    }`;
+  }
+  return '';
+};
+
 const computeResult = (match, inn) => {
+  if (isTest(match)) {
+    // Only the final (4th) innings or a 3rd-innings follow-on collapse can
+    // produce a result during score updates. Innings victories are checked
+    // separately by the caller.
+    if (inn.number !== 4) return '';
+
+    const target = match.target || 1;
+    const wicketsRemaining = MAX_WICKETS - inn.score.wickets;
+    const battingName = teamNameOf(match, inn.battingTeam);
+    const otherTeamKey = inn.battingTeam === 'teamA' ? 'teamB' : 'teamA';
+    const otherName = teamNameOf(match, otherTeamKey);
+
+    if (inn.score.runs >= target) {
+      return `${battingName} won by ${wicketsRemaining} wicket${
+        wicketsRemaining === 1 ? '' : 's'
+      }`;
+    }
+    // All-out before reaching the target.
+    const diff = target - 1 - inn.score.runs;
+    if (diff === 0) return 'Match tied';
+    return `${otherName} won by ${diff} run${diff === 1 ? '' : 's'}`;
+  }
+
+  // Limited-overs: decided at end of innings 2.
   const firstInn = match.innings[0];
   if (inn.number === 1) return '';
 
@@ -214,6 +326,52 @@ const computeResult = (match, inn) => {
   const diff = firstInn.score.runs - inn.score.runs;
   if (diff === 0) return 'Match tied';
   return `${otherName} won by ${diff} run${diff === 1 ? '' : 's'}`;
+};
+
+/**
+ * Called when an innings has just ended (all-out, overs-done, target-reached,
+ * or declaration). Closes the innings cleanly and decides whether the match
+ * continues to another innings, goes to an innings break, or is complete.
+ */
+const closeInnings = (match) => {
+  const inn = currentInnings(match);
+  if (!inn) return;
+  inn.completed = true;
+  inn.striker = null;
+  inn.nonStriker = null;
+  inn.currentBowler = null;
+
+  const limit = maxInnings(match);
+
+  if (!isTest(match)) {
+    if (inn.number === 1) {
+      // Set chase target for the second innings.
+      match.target = inn.score.runs + 1;
+      match.status = 'innings-break';
+      return;
+    }
+    // Limited innings 2 → match complete.
+    match.status = 'completed';
+    match.result = computeResult(match, inn);
+    return;
+  }
+
+  // Test format ------------------------------------------------------
+  if (inn.number < limit) {
+    // Check for an early innings victory after the 3rd innings.
+    const inningsResult = checkInningsVictory(match);
+    if (inningsResult) {
+      match.status = 'completed';
+      match.result = inningsResult;
+      return;
+    }
+    match.status = 'innings-break';
+    return;
+  }
+
+  // Final test innings → match complete.
+  match.status = 'completed';
+  match.result = computeResult(match, inn);
 };
 
 const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
@@ -297,28 +455,80 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
   }
 
   const allOut = inn.score.wickets >= MAX_WICKETS;
+  // Test cricket has no overs cap; only limited formats are time-bound.
   const oversDone =
+    !isTest(match) &&
     typeof match.overs === 'number' &&
     inn.score.balls >= match.overs * BALLS_PER_OVER;
+  // Chase target applies to inn 2 in limited and inn 4 in test.
+  const isChaseInnings =
+    (!isTest(match) && inn.number === 2) ||
+    (isTest(match) && inn.number === 4);
   const targetReached =
-    inn.number === 2 && match.target && inn.score.runs >= match.target;
+    isChaseInnings && match.target && inn.score.runs >= match.target;
 
-  if (inn.number === 1 && (allOut || oversDone)) {
-    inn.completed = true;
-    inn.striker = null;
-    inn.nonStriker = null;
-    inn.currentBowler = null;
-    match.target = inn.score.runs + 1;
-    match.status = 'innings-break';
-  } else if (inn.number === 2 && (targetReached || allOut || oversDone)) {
-    inn.completed = true;
-    inn.striker = null;
-    inn.nonStriker = null;
-    inn.currentBowler = null;
-    match.status = 'completed';
-    match.result = computeResult(match, inn);
+  if (allOut || oversDone || targetReached) {
+    closeInnings(match);
   }
 
+  return match.save();
+};
+
+/**
+ * Declare the current innings closed. Legal while the innings is live; the
+ * batting captain's call in real cricket. Reuses the same close-and-advance
+ * path as natural end-of-innings.
+ */
+const declareInnings = async (match) => {
+  if (match.status !== 'live') {
+    const err = new Error('Can only declare while an innings is live');
+    err.status = 400;
+    throw err;
+  }
+  const inn = currentInnings(match);
+  if (!inn) {
+    const err = new Error('No innings to declare');
+    err.status = 400;
+    throw err;
+  }
+  pushHistory(match, 'declare');
+  closeInnings(match);
+  return match.save();
+};
+
+/**
+ * End a test match as a draw. Without timed sessions we rely on the scorer
+ * to call this when both captains agree there won't be a result.
+ */
+const endAsDraw = async (match) => {
+  if (!isTest(match)) {
+    const err = new Error('Only test matches can end as a draw');
+    err.status = 400;
+    throw err;
+  }
+  if (match.status === 'completed') {
+    const err = new Error('Match is already completed');
+    err.status = 400;
+    throw err;
+  }
+  if ((match.innings?.length || 0) < 3) {
+    const err = new Error(
+      'A draw can only be declared after at least 3 innings'
+    );
+    err.status = 400;
+    throw err;
+  }
+  pushHistory(match, 'draw');
+  // Close any live innings so state is consistent.
+  const inn = currentInnings(match);
+  if (inn && !inn.completed) {
+    inn.completed = true;
+    inn.striker = null;
+    inn.nonStriker = null;
+    inn.currentBowler = null;
+  }
+  match.status = 'completed';
+  match.result = 'Match drawn';
   return match.save();
 };
 
@@ -355,6 +565,9 @@ module.exports = {
   loadForWrite,
   setupMatch,
   setupInnings2,
+  startNextInnings,
+  declareInnings,
+  endAsDraw,
   applyScoreUpdate,
   setNewBatsman,
   setNewBowler,
@@ -363,6 +576,9 @@ module.exports = {
   getBattingTeamPlayers,
   getBowlingTeamPlayers,
   currentInnings,
+  isTest,
+  maxInnings,
+  defaultNextBattingTeam,
   isScorerToken,
   rotateScorerToken,
   MAX_WICKETS,
