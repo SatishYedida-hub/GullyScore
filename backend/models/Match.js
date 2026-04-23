@@ -68,6 +68,10 @@ const matchSchema = new mongoose.Schema(
     teamB: { type: String },
     teamAPlayers: { type: [String], default: [] },
     teamBPlayers: { type: [String], default: [] },
+    // Team crests snapshotted at match-creation time so the scorecard keeps
+    // the right logos even if a team is later renamed or deleted.
+    teamAPhoto: { type: String, default: '' },
+    teamBPhoto: { type: String, default: '' },
 
     overs: { type: Number },
     battingTeam: { type: String, enum: ['teamA', 'teamB'], default: 'teamA' },

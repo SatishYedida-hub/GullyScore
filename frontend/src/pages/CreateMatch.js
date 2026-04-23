@@ -144,7 +144,7 @@ function CreateMatch() {
           <div className="versus-side">
             {teamAObj ? (
               <>
-                <TeamAvatar name={teamAObj.name} size={56} />
+                <TeamAvatar name={teamAObj.name} photo={teamAObj.photo} size={56} />
                 <div>
                   <strong>{teamAObj.name}</strong>
                   <span className="muted small">
@@ -166,7 +166,7 @@ function CreateMatch() {
                     {teamBObj.players?.length || 0} players
                   </span>
                 </div>
-                <TeamAvatar name={teamBObj.name} size={56} />
+                <TeamAvatar name={teamBObj.name} photo={teamBObj.photo} size={56} />
               </>
             ) : (
               <span className="muted">Team B</span>

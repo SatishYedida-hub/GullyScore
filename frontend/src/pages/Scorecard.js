@@ -184,12 +184,12 @@ function Scorecard() {
         <div className="score-header-left">
           <div className="teams-row">
             <span className="team-ident">
-              <TeamAvatar name={match.teamA} size={40} />
+              <TeamAvatar name={match.teamA} photo={match.teamAPhoto} size={40} />
               <strong>{match.teamA}</strong>
             </span>
             <span className="vs">vs</span>
             <span className="team-ident">
-              <TeamAvatar name={match.teamB} size={40} />
+              <TeamAvatar name={match.teamB} photo={match.teamBPhoto} size={40} />
               <strong>{match.teamB}</strong>
             </span>
           </div>

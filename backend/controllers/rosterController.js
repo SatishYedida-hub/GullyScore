@@ -43,6 +43,34 @@ exports.createPlayer = async (req, res, next) => {
   }
 };
 
+exports.updatePhoto = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { photo } = req.body || {};
+    const { validatePhoto } = require('../utils/photo');
+
+    const err = validatePhoto(photo);
+    if (err) return next(httpError(400, err));
+
+    const player = await rosterService.getById(id);
+    if (!player) return next(httpError(404, 'Player not found'));
+
+    const updated = await rosterService.updatePlayerPhoto(player, photo || '');
+    return res.status(200).json({
+      message: photo
+        ? `Photo updated for "${player.name}"`
+        : `Photo removed for "${player.name}"`,
+      data: {
+        _id: updated._id,
+        name: updated.name,
+        photo: updated.photo || '',
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 exports.deletePlayer = async (req, res, next) => {
   try {
     const { id } = req.params;

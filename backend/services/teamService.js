@@ -54,6 +54,14 @@ const removePlayer = async (team, playerName) => {
  * Add a player name to a team's current lineup. Creates a roster entry on
  * the fly so the player becomes reusable across teams.
  */
+/**
+ * Set (or clear, when given an empty string) a team's crest photo.
+ */
+const updateTeamPhoto = async (team, photo) => {
+  team.photo = photo || '';
+  return team.save();
+};
+
 const addPlayer = async (team, playerName) => {
   const trimmed = (playerName || '').trim();
   if (!trimmed) {
@@ -79,5 +87,6 @@ module.exports = {
   deleteTeam,
   removePlayer,
   addPlayer,
+  updateTeamPhoto,
   findActiveMatchForTeam,
 };

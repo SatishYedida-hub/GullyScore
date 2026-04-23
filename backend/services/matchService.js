@@ -50,6 +50,9 @@ const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
     teamB,
     teamAPlayers: aDoc ? aDoc.players : [],
     teamBPlayers: bDoc ? bDoc.players : [],
+    // Snapshot the current crests so scorecards survive later team edits.
+    teamAPhoto: aDoc ? aDoc.photo || '' : '',
+    teamBPhoto: bDoc ? bDoc.photo || '' : '',
     overs,
     battingTeam,
     scorerToken,

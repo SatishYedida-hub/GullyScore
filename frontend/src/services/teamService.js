@@ -13,3 +13,6 @@ export const removePlayer = (id, playerName) =>
 
 export const addPlayerToTeam = (id, name) =>
   api.post(`/teams/${id}/players`, { name });
+
+export const updateTeamPhoto = (id, photo) =>
+  api.put(`/teams/${id}/photo`, { photo });

@@ -10,5 +10,6 @@ router.get('/:id', teamController.getTeamById);
 router.delete('/:id', teamController.deleteTeam);
 router.post('/:id/players', teamController.addPlayer);
 router.delete('/:id/players/:player', teamController.removePlayer);
+router.put('/:id/photo', teamController.updatePhoto);
 
 module.exports = router;

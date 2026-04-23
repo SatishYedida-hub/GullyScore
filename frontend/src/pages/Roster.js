@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 
 import PageBanner from '../components/PageBanner';
 import TeamAvatar from '../components/TeamAvatar';
+import PhotoUploader from '../components/PhotoUploader';
 import { CricketBat } from '../components/CricketIcons';
 import {
   addRosterPlayer,
   deleteRosterPlayer,
   getRoster,
+  updatePlayerPhoto as apiUpdatePlayerPhoto,
 } from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
 
@@ -20,6 +22,8 @@ function Roster() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [query, setQuery] = useState('');
+  const [photoPlayer, setPhotoPlayer] = useState(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -99,6 +103,31 @@ function Roster() {
     }
   };
 
+  const applyPhoto = async (dataUrl) => {
+    if (!photoPlayer) return;
+    setError(null);
+    setNotice(null);
+    try {
+      setPhotoSaving(true);
+      const { data } = await apiUpdatePlayerPhoto(photoPlayer._id, dataUrl);
+      setPlayers((prev) =>
+        prev.map((p) =>
+          p._id === photoPlayer._id ? { ...p, photo: data.data.photo } : p
+        )
+      );
+      setNotice(
+        dataUrl
+          ? `Photo updated for "${photoPlayer.name}".`
+          : `Photo removed from "${photoPlayer.name}".`
+      );
+      setPhotoPlayer(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
+
   const banner = (
     <PageBanner
       image="/images/cricket-team.png"
@@ -172,11 +201,19 @@ function Roster() {
               const rowBusy = busyId === p._id;
               return (
                 <li key={p._id} className="roster-row">
+                  <button
+                    type="button"
+                    className="avatar-btn roster-avatar-btn"
+                    onClick={() => setPhotoPlayer(p)}
+                    title="Change player photo"
+                  >
+                    <TeamAvatar name={p.name} photo={p.photo} size={40} />
+                    <span className="avatar-edit-badge" aria-hidden>✎</span>
+                  </button>
                   <Link
                     to={`/players/${encodeURIComponent(p.name)}`}
                     className="roster-row-main"
                   >
-                    <TeamAvatar name={p.name} size={40} />
                     <div>
                       <strong className="roster-row-name">{p.name}</strong>
                       {p.teams.length === 0 ? (
@@ -192,19 +229,39 @@ function Roster() {
                       )}
                     </div>
                   </Link>
-                  <button
-                    className="btn danger small-btn"
-                    disabled={rowBusy}
-                    onClick={() => handleDelete(p)}
-                  >
-                    {rowBusy ? 'Removing…' : 'Remove'}
-                  </button>
+                  <div className="roster-row-actions">
+                    <button
+                      type="button"
+                      className="btn small-btn"
+                      onClick={() => setPhotoPlayer(p)}
+                    >
+                      {p.photo ? 'Change' : '+ Photo'}
+                    </button>
+                    <button
+                      className="btn danger small-btn"
+                      disabled={rowBusy}
+                      onClick={() => handleDelete(p)}
+                    >
+                      {rowBusy ? 'Removing…' : 'Remove'}
+                    </button>
+                  </div>
                 </li>
               );
             })}
           </ul>
         </>
       )}
+
+      <PhotoUploader
+        open={!!photoPlayer}
+        title={photoPlayer ? `Player photo — ${photoPlayer.name}` : 'Player photo'}
+        currentPhoto={photoPlayer?.photo || ''}
+        fallbackName={photoPlayer?.name || ''}
+        onSave={applyPhoto}
+        onRemove={photoPlayer?.photo ? () => applyPhoto('') : undefined}
+        onClose={() => (photoSaving ? null : setPhotoPlayer(null))}
+        saving={photoSaving}
+      />
     </section>
   );
 }

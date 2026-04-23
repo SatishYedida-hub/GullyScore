@@ -20,8 +20,10 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Scorer-Token'],
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Bumped from the 100kb default so photo uploads (base64 data URLs) fit
+// comfortably. Matches MAX_PHOTO_LENGTH in utils/photo.js.
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(morgan('dev'));
 
 app.get('/', (req, res) => {

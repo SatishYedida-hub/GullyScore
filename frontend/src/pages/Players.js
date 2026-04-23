@@ -183,7 +183,7 @@ function Players() {
                   to={`/players/${encodeURIComponent(p.name)}`}
                   className="roster-chip"
                 >
-                  <TeamAvatar name={p.name} size={28} />
+                  <TeamAvatar name={p.name} photo={p.photo} size={28} />
                   <span>{p.name}</span>
                 </Link>
               </li>
@@ -225,7 +225,7 @@ function BattingTable({ rows }) {
                   to={`/players/${encodeURIComponent(p.name)}`}
                   className="player-cell"
                 >
-                  <TeamAvatar name={p.name} size={28} />
+                  <TeamAvatar name={p.name} photo={p.photo} size={28} />
                   <span>
                     <strong>{p.name}</strong>
                     {p.teams.length > 0 && (
@@ -282,7 +282,7 @@ function BowlingTable({ rows }) {
                   to={`/players/${encodeURIComponent(p.name)}`}
                   className="player-cell"
                 >
-                  <TeamAvatar name={p.name} size={28} />
+                  <TeamAvatar name={p.name} photo={p.photo} size={28} />
                   <span>
                     <strong>{p.name}</strong>
                     {p.teams.length > 0 && (

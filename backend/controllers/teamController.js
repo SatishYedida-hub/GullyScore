@@ -107,6 +107,30 @@ exports.addPlayer = async (req, res, next) => {
   }
 };
 
+exports.updatePhoto = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { photo } = req.body || {};
+    const { validatePhoto } = require('../utils/photo');
+
+    const err = validatePhoto(photo);
+    if (err) return next(sendError(400, err));
+
+    const team = await teamService.getTeamById(id);
+    if (!team) return next(sendError(404, 'Team not found'));
+
+    const updated = await teamService.updateTeamPhoto(team, photo || '');
+    return res.status(200).json({
+      message: photo
+        ? `Photo updated for "${team.name}"`
+        : `Photo removed for "${team.name}"`,
+      data: updated,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 exports.removePlayer = async (req, res, next) => {
   try {
     const { id, player } = req.params;

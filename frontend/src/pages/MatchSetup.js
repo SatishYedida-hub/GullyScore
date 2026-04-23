@@ -234,7 +234,7 @@ function MatchSetup() {
 
       <div className="versus-preview">
         <div className="versus-side">
-          <TeamAvatar name={match.teamA} size={56} />
+          <TeamAvatar name={match.teamA} photo={match.teamAPhoto} size={56} />
           <div>
             <strong>{match.teamA}</strong>
             <span className="muted small">
@@ -250,7 +250,7 @@ function MatchSetup() {
               {match.teamBPlayers?.length || 0} players
             </span>
           </div>
-          <TeamAvatar name={match.teamB} size={56} />
+          <TeamAvatar name={match.teamB} photo={match.teamBPhoto} size={56} />
         </div>
       </div>
 

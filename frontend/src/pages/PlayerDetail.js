@@ -3,8 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 
 import PageBanner from '../components/PageBanner';
 import TeamAvatar from '../components/TeamAvatar';
+import PhotoUploader from '../components/PhotoUploader';
 import { Stumps } from '../components/CricketIcons';
 import { getPlayerByName } from '../services/playerService';
+import {
+  getRoster,
+  updatePlayerPhoto as apiUpdatePlayerPhoto,
+} from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
 
 const fmtOvers = (o) => (typeof o === 'number' ? o.toFixed(1) : '0.0');
@@ -24,13 +29,26 @@ function PlayerDetail() {
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // The stats endpoint doesn't expose a player document id, so we grab it
+  // from the roster listing on mount. This lets us target the PUT photo
+  // endpoint for players who are on the global pool.
+  const [rosterId, setRosterId] = useState(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await getPlayerByName(name);
-        if (mounted) setPlayer(data.data);
+        const [{ data: playerRes }, rosterRes] = await Promise.all([
+          getPlayerByName(name),
+          getRoster().catch(() => ({ data: { data: [] } })),
+        ]);
+        if (!mounted) return;
+        setPlayer(playerRes.data);
+        const match = (rosterRes.data.data || []).find((p) => p.name === name);
+        if (match) setRosterId(match._id);
       } catch (err) {
         if (mounted) setError(getErrorMessage(err));
       } finally {
@@ -41,6 +59,23 @@ function PlayerDetail() {
       mounted = false;
     };
   }, [name]);
+
+  const applyPhoto = async (dataUrl) => {
+    if (!rosterId) return;
+    setError(null);
+    setNotice(null);
+    try {
+      setPhotoSaving(true);
+      const { data } = await apiUpdatePlayerPhoto(rosterId, dataUrl);
+      setPlayer((prev) => (prev ? { ...prev, photo: data.data.photo } : prev));
+      setNotice(dataUrl ? 'Photo updated.' : 'Photo removed.');
+      setPhotoOpen(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
 
   const banner = (
     <PageBanner
@@ -95,7 +130,27 @@ function PlayerDetail() {
       {banner}
 
       <div className="player-identity">
-        <TeamAvatar name={player.name} size={72} />
+        {rosterId ? (
+          <button
+            type="button"
+            className="avatar-btn avatar-btn-large"
+            onClick={() => setPhotoOpen(true)}
+            title="Change player photo"
+          >
+            <TeamAvatar
+              name={player.name}
+              photo={player.photo || ''}
+              size={96}
+            />
+            <span className="avatar-edit-badge" aria-hidden>✎</span>
+          </button>
+        ) : (
+          <TeamAvatar
+            name={player.name}
+            photo={player.photo || ''}
+            size={96}
+          />
+        )}
         <div>
           <h2 className="player-name-big">{player.name}</h2>
           {teams.length > 0 && (
@@ -103,8 +158,31 @@ function PlayerDetail() {
               Plays for <strong>{teams.join(', ')}</strong>
             </div>
           )}
+          {rosterId && (
+            <button
+              type="button"
+              className="btn link small-btn"
+              onClick={() => setPhotoOpen(true)}
+              style={{ paddingLeft: 0 }}
+            >
+              {player.photo ? 'Change photo' : '+ Add photo'}
+            </button>
+          )}
         </div>
       </div>
+
+      {notice && <p className="form-message success">{notice}</p>}
+
+      <PhotoUploader
+        open={photoOpen}
+        title={`Player photo — ${player.name}`}
+        currentPhoto={player.photo || ''}
+        fallbackName={player.name}
+        onSave={applyPhoto}
+        onRemove={player.photo ? () => applyPhoto('') : undefined}
+        onClose={() => (photoSaving ? null : setPhotoOpen(false))}
+        saving={photoSaving}
+      />
 
       {batting.innings > 0 && (
         <div className="stats-card">
@@ -177,10 +255,10 @@ function PlayerDetail() {
                     <tr key={m.matchId}>
                       <td>
                         <div className="match-row-teams">
-                          <TeamAvatar name={m.teamA} size={22} />
+                          <TeamAvatar name={m.teamA} photo={m.teamAPhoto} size={22} />
                           <strong className="small">{m.teamA}</strong>
                           <span className="muted small">vs</span>
-                          <TeamAvatar name={m.teamB} size={22} />
+                          <TeamAvatar name={m.teamB} photo={m.teamBPhoto} size={22} />
                           <strong className="small">{m.teamB}</strong>
                         </div>
                         <div className="muted small">

@@ -9,6 +9,12 @@ const playerSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    // Optional profile photo, stored as a base64 data URL. The frontend
+    // compresses to <= ~100KB before upload.
+    photo: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

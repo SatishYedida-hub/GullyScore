@@ -152,12 +152,12 @@ function MatchHistory() {
               <div className="match-list-header">
                 <div className="match-teams-line">
                   <span className="mini-team">
-                    <TeamAvatar name={m.teamA} size={32} />
+                    <TeamAvatar name={m.teamA} photo={m.teamAPhoto} size={32} />
                     <strong>{m.teamA}</strong>
                   </span>
                   <span className="vs-mini">vs</span>
                   <span className="mini-team">
-                    <TeamAvatar name={m.teamB} size={32} />
+                    <TeamAvatar name={m.teamB} photo={m.teamBPhoto} size={32} />
                     <strong>{m.teamB}</strong>
                   </span>
                 </div>

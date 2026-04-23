@@ -191,7 +191,7 @@ function CreateTeam() {
                       onClick={() => togglePlayer(p.name)}
                       aria-pressed={isOn}
                     >
-                      <TeamAvatar name={p.name} size={22} />
+                      <TeamAvatar name={p.name} photo={p.photo} size={22} />
                       <span>{p.name}</span>
                       <span className="pool-chip-mark">{isOn ? '✓' : '+'}</span>
                     </button>

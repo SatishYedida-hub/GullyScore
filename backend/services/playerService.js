@@ -134,7 +134,7 @@ const finalizeBowling = (bw) => {
 const buildRegistry = async () => {
   const [teams, rosterPlayers] = await Promise.all([
     Team.find().select('name players'),
-    Player.find().select('name'),
+    Player.find().select('name photo'),
   ]);
   const registry = new Map();
 
@@ -142,6 +142,7 @@ const buildRegistry = async () => {
     if (!registry.has(name)) {
       registry.set(name, {
         name,
+        photo: '',
         teams: new Set(),
         batting: emptyBatting(),
         bowling: emptyBowling(),
@@ -152,9 +153,11 @@ const buildRegistry = async () => {
     return registry.get(name);
   };
 
-  // Seed from the standalone roster so pool-only players still appear.
+  // Seed from the standalone roster so pool-only players still appear,
+  // and pull in profile photos where available.
   rosterPlayers.forEach((p) => {
-    ensure(p.name);
+    const entry = ensure(p.name);
+    if (p.photo) entry.photo = p.photo;
   });
 
   teams.forEach((t) => {
@@ -189,6 +192,7 @@ const aggregateAll = async () => {
 
   return Array.from(registry.values()).map((p) => ({
     name: p.name,
+    photo: p.photo || '',
     teams: Array.from(p.teams).sort(),
     batting: finalizeBatting(p.batting),
     bowling: finalizeBowling(p.bowling),
@@ -233,6 +237,8 @@ const aggregateOne = async (name) => {
         matchId: mid,
         teamA: m.teamA,
         teamB: m.teamB,
+        teamAPhoto: m.teamAPhoto || '',
+        teamBPhoto: m.teamBPhoto || '',
         overs: m.overs,
         status: m.status,
         result: m.result,
@@ -263,6 +269,7 @@ const aggregateOne = async (name) => {
   const p = registry.get(name);
   return {
     name,
+    photo: p.photo || '',
     teams: Array.from(p.teams).sort(),
     batting: finalizeBatting(p.batting),
     bowling: finalizeBowling(p.bowling),

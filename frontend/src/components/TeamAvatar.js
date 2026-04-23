@@ -29,10 +29,29 @@ const getInitials = (name = '') => {
 };
 
 /**
- * Circular avatar that shows a team's initials on a colorful gradient.
- * The color is deterministic per team name.
+ * Circular avatar. If a `photo` (data URL or URL) is provided, it's rendered
+ * as the image content. Otherwise we fall back to a colorful gradient with
+ * initials derived from the name.
  */
-function TeamAvatar({ name, size = 44, className = '' }) {
+function TeamAvatar({ name, size = 44, className = '', photo = '' }) {
+  const sharedStyle = {
+    width: size,
+    height: size,
+    fontSize: Math.round(size * 0.38),
+  };
+
+  if (photo) {
+    return (
+      <span
+        className={`team-avatar team-avatar-photo ${className}`}
+        style={sharedStyle}
+        aria-hidden="true"
+      >
+        <img src={photo} alt="" />
+      </span>
+    );
+  }
+
   const initials = getInitials(name);
   const [c1, c2] = PALETTES[hashName(name) % PALETTES.length];
 
@@ -40,9 +59,7 @@ function TeamAvatar({ name, size = 44, className = '' }) {
     <span
       className={`team-avatar ${className}`}
       style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.38),
+        ...sharedStyle,
         background: `linear-gradient(135deg, ${c1}, ${c2})`,
       }}
       aria-hidden="true"

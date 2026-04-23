@@ -68,6 +68,7 @@ const listWithTeams = async () => {
   return players.map((p) => ({
     _id: p._id,
     name: p.name,
+    photo: p.photo || '',
     createdAt: p.createdAt,
     teams: membership.get(p.name) || [],
   }));
@@ -87,6 +88,14 @@ const findTeamsForPlayer = async (name) => {
   return Team.find({ players: name }).select('_id name');
 };
 
+/**
+ * Set (or clear, when given an empty string) a player's profile photo.
+ */
+const updatePlayerPhoto = async (player, photo) => {
+  player.photo = photo || '';
+  return player.save();
+};
+
 module.exports = {
   createPlayer,
   ensurePlayers,
@@ -94,4 +103,5 @@ module.exports = {
   getById,
   deletePlayer,
   findTeamsForPlayer,
+  updatePlayerPhoto,
 };

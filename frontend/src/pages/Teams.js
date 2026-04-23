@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 
 import PageBanner from '../components/PageBanner';
 import TeamAvatar from '../components/TeamAvatar';
+import PhotoUploader from '../components/PhotoUploader';
 import { Stumps } from '../components/CricketIcons';
 import {
   addPlayerToTeam as apiAddPlayer,
   deleteTeam as apiDeleteTeam,
   getAllTeams,
   removePlayer as apiRemovePlayer,
+  updateTeamPhoto as apiUpdateTeamPhoto,
 } from '../services/teamService';
 import { getRoster } from '../services/rosterService';
 import { getErrorMessage } from '../services/api';
@@ -20,6 +22,8 @@ function Teams() {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [photoTeam, setPhotoTeam] = useState(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +95,44 @@ function Teams() {
       setError(getErrorMessage(err));
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const savePhoto = async (dataUrl) => {
+    if (!photoTeam) return;
+    setError(null);
+    setNotice(null);
+    try {
+      setPhotoSaving(true);
+      const { data } = await apiUpdateTeamPhoto(photoTeam._id, dataUrl);
+      setTeams((prev) =>
+        prev.map((t) => (t._id === photoTeam._id ? data.data : t))
+      );
+      setNotice(`Photo updated for "${photoTeam.name}".`);
+      setPhotoTeam(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!photoTeam) return;
+    setError(null);
+    setNotice(null);
+    try {
+      setPhotoSaving(true);
+      const { data } = await apiUpdateTeamPhoto(photoTeam._id, '');
+      setTeams((prev) =>
+        prev.map((t) => (t._id === photoTeam._id ? data.data : t))
+      );
+      setNotice(`Photo removed from "${photoTeam.name}".`);
+      setPhotoTeam(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setPhotoSaving(false);
     }
   };
 
@@ -175,10 +217,22 @@ function Teams() {
               onDeleteTeam={handleDeleteTeam}
               onRemovePlayer={handleRemovePlayer}
               onAddPlayer={handleAddPlayer}
+              onChangePhoto={() => setPhotoTeam(team)}
             />
           ))}
         </ul>
       )}
+
+      <PhotoUploader
+        open={!!photoTeam}
+        title={photoTeam ? `Team photo — ${photoTeam.name}` : 'Team photo'}
+        currentPhoto={photoTeam?.photo || ''}
+        fallbackName={photoTeam?.name || ''}
+        onSave={savePhoto}
+        onRemove={photoTeam?.photo ? removePhoto : undefined}
+        onClose={() => (photoSaving ? null : setPhotoTeam(null))}
+        saving={photoSaving}
+      />
     </section>
   );
 }
@@ -190,6 +244,7 @@ function TeamCard({
   onDeleteTeam,
   onRemovePlayer,
   onAddPlayer,
+  onChangePhoto,
 }) {
   const [picker, setPicker] = useState('');
   const [typed, setTyped] = useState('');
@@ -220,7 +275,15 @@ function TeamCard({
     <li className="team-card">
       <div className="team-card-head">
         <div className="team-card-ident">
-          <TeamAvatar name={team.name} size={48} />
+          <button
+            type="button"
+            className="avatar-btn"
+            onClick={() => onChangePhoto && onChangePhoto(team)}
+            title="Change team photo"
+          >
+            <TeamAvatar name={team.name} photo={team.photo} size={48} />
+            <span className="avatar-edit-badge" aria-hidden>✎</span>
+          </button>
           <div>
             <h3 className="team-name">{team.name}</h3>
             <span className="muted small">
@@ -229,13 +292,22 @@ function TeamCard({
             </span>
           </div>
         </div>
-        <button
-          className="btn danger small-btn"
-          disabled={teamBusy}
-          onClick={() => onDeleteTeam(team)}
-        >
-          {teamBusy ? 'Deleting…' : 'Delete team'}
-        </button>
+        <div className="team-card-actions">
+          <button
+            type="button"
+            className="btn small-btn"
+            onClick={() => onChangePhoto && onChangePhoto(team)}
+          >
+            {team.photo ? 'Change photo' : '+ Add photo'}
+          </button>
+          <button
+            className="btn danger small-btn"
+            disabled={teamBusy}
+            onClick={() => onDeleteTeam(team)}
+          >
+            {teamBusy ? 'Deleting…' : 'Delete team'}
+          </button>
+        </div>
       </div>
 
       {team.players.length === 0 ? (
