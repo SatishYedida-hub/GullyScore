@@ -100,6 +100,7 @@ function CreateTeam() {
         title="Create a Team"
         subtitle="Give your squad a name and pick players from your pool — or add new ones on the fly."
         tone="tone-blue"
+        memeKey="createTeam"
       />
 
       <form className="form card-form" onSubmit={handleSubmit}>

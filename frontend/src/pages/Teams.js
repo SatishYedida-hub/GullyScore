@@ -176,6 +176,7 @@ function Teams() {
         title="Teams"
         subtitle="Manage your rosters — add players from your pool, clean up old squads, and get ready to play."
         tone="tone-green"
+        memeKey="teamsList"
         actions={
           <div className="page-banner-btn-row">
             <Link to="/roster" className="btn">

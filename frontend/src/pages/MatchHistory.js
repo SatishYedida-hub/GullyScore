@@ -84,6 +84,7 @@ function MatchHistory() {
       title="Match History"
       subtitle="Live scores, finished matches and full ball-by-ball scorecards."
       tone="tone-purple"
+      memeKey="matchHistoryList"
       actions={
         <Link to="/matches/new" className="btn primary">
           + New Match

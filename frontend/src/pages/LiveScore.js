@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 
 import TeamAvatar from '../components/TeamAvatar';
+import MemeCaption from '../components/MemeCaption';
+import { useMemeMode } from '../utils/theme';
 import {
   currentInningsOf,
   declareInnings as apiDeclareInnings,
@@ -50,6 +52,7 @@ const economy = (runs = 0, balls = 0) => {
 
 function LiveScore() {
   const { id } = useParams();
+  const [memeOn] = useMemeMode();
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -394,6 +397,15 @@ function LiveScore() {
 
   return (
     <section className="page live-score">
+      <MemeCaption
+        captionKey={
+          isCompleted
+            ? match.result === 'Match drawn'
+              ? 'draw'
+              : 'victory'
+            : 'liveScore'
+        }
+      />
       <header className="score-header score-header-pretty">
         <div className="score-header-left">
           <div className="teams-row">
@@ -921,9 +933,14 @@ function LiveScore() {
       {wicketOpen && (
         <div className="modal-backdrop" onClick={() => setWicketOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Wicket — {striker?.name}</h3>
+            <MemeCaption captionKey="wicket" />
+            <h3>
+              {memeOn ? `OUT! — ${striker?.name}` : `Wicket — ${striker?.name}`}
+            </h3>
             <p className="muted small">
-              The striker is out. Pick how and any runs completed on the ball.
+              {memeOn
+                ? 'Striker aaduthuntaru, now out annadu umpire. How out? Runs?'
+                : 'The striker is out. Pick how and any runs completed on the ball.'}
             </p>
 
             <label className="form-field">

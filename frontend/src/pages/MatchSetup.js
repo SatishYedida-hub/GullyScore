@@ -289,6 +289,7 @@ function MatchSetup() {
         title={bannerTitle}
         subtitle={bannerSubtitle}
         tone={isInningsBreak ? 'tone-orange' : 'tone-blue'}
+        memeKey={isInningsBreak ? 'innings2Setup' : 'matchSetup'}
       />
 
       <div className="versus-preview">

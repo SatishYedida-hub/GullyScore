@@ -2281,3 +2281,372 @@ fieldset.form-field {
   margin-top: 4px;
 }
 
+/* ================================================================== */
+/*                   MEME MODE (Tollywood theme)                       */
+/* ================================================================== */
+
+/* The meme-mode toggle in the navbar. Lives next to the nav links. */
+.meme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 250, 252, 0.35);
+  background: transparent;
+  color: var(--text-invert);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.meme-toggle:hover {
+  background: rgba(248, 250, 252, 0.1);
+  transform: translateY(-1px);
+}
+.meme-toggle.on {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+/* Base caption bar component. Shows the bilingual Telugu+English lines.
+   Hidden outside meme mode because the <MemeCaption> component early-
+   returns, but we still scope the bright styles to .meme-mode for safety. */
+.meme-caption {
+  display: none;
+}
+.meme-mode .meme-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  border-radius: 4px;
+  background: #0b0b0b;
+  color: #ffe34d;
+  border: 3px solid #ffe34d;
+  box-shadow: 4px 4px 0 #dc2626;
+  text-align: center;
+}
+.meme-mode .meme-caption-te {
+  font-family: 'Impact', 'Oswald', 'Anton', 'Bebas Neue', sans-serif;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  -webkit-text-stroke: 1px #000;
+  text-shadow: 2px 2px 0 #000;
+  color: #ffe34d;
+}
+.meme-mode .meme-caption-en {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0.85;
+}
+
+.brand-meme-chip {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1a1a1a;
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 0.3px #000;
+}
+
+/* --------- Global page palette when meme mode is on ---------------- */
+body.meme-mode {
+  --bg: #fff7d6;            /* soft marigold cream */
+  --surface: #fffef5;
+  --surface-dark: #0b0b0b;  /* navbar goes pure black */
+  --text: #0b0b0b;
+  --text-muted: #3f3f46;
+  --text-invert: #ffe34d;   /* yellow on black reads as film poster */
+  --border: #0b0b0b;        /* chunky comic outlines */
+  --primary: #dc2626;       /* Tollywood tomato */
+  --primary-hover: #991b1b;
+  --danger: #9f1239;
+  --danger-hover: #7f1d1d;
+  --success-bg: #ecfccb;
+  --success-text: #365314;
+  --error-bg: #fee2e2;
+  --error-text: #7f1d1d;
+  --radius: 4px;            /* squarer = meme-y */
+  --shadow-sm: 2px 2px 0 #0b0b0b;
+  --shadow-md: 4px 4px 0 #0b0b0b;
+
+  background-image:
+    radial-gradient(#00000010 1px, transparent 1px),
+    radial-gradient(#00000008 1px, transparent 1px);
+  background-size: 20px 20px, 40px 40px;
+  background-position: 0 0, 10px 10px;
+}
+
+/* Navbar feel — add a bold yellow underline and chunky poster type. */
+body.meme-mode .navbar {
+  border-bottom: 4px solid #f59e0b;
+  font-family: 'Impact', 'Oswald', 'Anton', 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+body.meme-mode .navbar-brand {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+body.meme-mode .navbar-links a {
+  font-size: 14px;
+}
+
+/* Cards get the comic outline + drop-shadow treatment. */
+body.meme-mode .card,
+body.meme-mode .panel,
+body.meme-mode .scoreboard-card,
+body.meme-mode .team-card,
+body.meme-mode .match-list-item,
+body.meme-mode .form.card-form,
+body.meme-mode .empty-state,
+body.meme-mode .scorer-banner {
+  border: 3px solid #0b0b0b !important;
+  border-radius: 6px !important;
+  box-shadow: 6px 6px 0 #0b0b0b !important;
+  background: var(--surface) !important;
+}
+
+/* Buttons get Impact type + hard shadow. */
+body.meme-mode .btn {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 2px solid #0b0b0b;
+  box-shadow: 3px 3px 0 #0b0b0b;
+  border-radius: 4px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+body.meme-mode .btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #0b0b0b;
+}
+body.meme-mode .btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #0b0b0b;
+}
+body.meme-mode .btn.primary {
+  background: #dc2626;
+  color: #fff;
+  border-color: #0b0b0b;
+}
+body.meme-mode .btn.danger {
+  background: #0b0b0b;
+  color: #ffe34d;
+}
+body.meme-mode .btn.link {
+  background: transparent;
+  color: #0b0b0b;
+  box-shadow: none;
+  border: 2px dashed #0b0b0b;
+}
+
+/* Run buttons get a splash of comic color per value. */
+body.meme-mode .run-btn {
+  font-size: 28px;
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  -webkit-text-stroke: 1px #0b0b0b;
+  text-shadow: 2px 2px 0 #0b0b0b;
+}
+body.meme-mode .run-btn.run-0  { background: #e5e7eb; color: #0b0b0b; }
+body.meme-mode .run-btn.run-1  { background: #fde68a; color: #0b0b0b; }
+body.meme-mode .run-btn.run-2  { background: #fbbf24; color: #0b0b0b; }
+body.meme-mode .run-btn.run-3  { background: #f97316; color: #fff; }
+body.meme-mode .run-btn.run-4  { background: #dc2626; color: #fff; }
+body.meme-mode .run-btn.run-6  { background: #7c3aed; color: #ffe34d; }
+
+/* Big score scoreboard becomes the movie-title treatment. */
+body.meme-mode .score-main {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  -webkit-text-stroke: 2px #0b0b0b;
+  text-shadow: 4px 4px 0 #f59e0b, 8px 8px 0 #dc2626;
+  letter-spacing: 0.02em;
+}
+body.meme-mode .score-runs,
+body.meme-mode .score-wickets,
+body.meme-mode .score-slash {
+  color: #fff;
+}
+
+/* Page banner becomes a cinematic meme poster. */
+body.meme-mode .page-banner {
+  border: 4px solid #0b0b0b;
+  border-radius: 6px;
+  background: #ffe34d !important;
+  box-shadow: 8px 8px 0 #dc2626;
+  overflow: hidden;
+}
+body.meme-mode .page-banner-title {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #0b0b0b;
+  -webkit-text-stroke: 1px #0b0b0b;
+  text-shadow: 3px 3px 0 #dc2626;
+  line-height: 1.02;
+}
+body.meme-mode .page-banner-sub {
+  color: #1c1c1c;
+  font-weight: 600;
+}
+body.meme-mode .page-banner-kicker {
+  background: #0b0b0b;
+  color: #ffe34d;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: 'Impact', 'Oswald', sans-serif;
+  letter-spacing: 0.08em;
+}
+body.meme-mode .meme-banner-caption {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+body.meme-mode .meme-banner-caption .meme-caption-te {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  font-size: 26px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #dc2626;
+  -webkit-text-stroke: 1.5px #0b0b0b;
+  text-shadow: 3px 3px 0 #0b0b0b;
+  line-height: 1;
+}
+body.meme-mode .meme-banner-caption .meme-caption-en {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0b0b0b;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* Badges inside meme mode: chunky, high-contrast. */
+body.meme-mode .badge,
+body.meme-mode .badge-format {
+  border: 2px solid #0b0b0b;
+  box-shadow: 2px 2px 0 #0b0b0b;
+  font-family: 'Impact', 'Oswald', sans-serif;
+  letter-spacing: 0.08em;
+}
+body.meme-mode .badge-live {
+  background: #dc2626;
+  color: #fff;
+}
+body.meme-mode .badge-completed {
+  background: #0b0b0b;
+  color: #ffe34d;
+}
+
+/* Victory banner gets the full "theatrical release" treatment. */
+body.meme-mode .victory-banner {
+  border: 4px solid #0b0b0b !important;
+  box-shadow: 8px 8px 0 #dc2626 !important;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #ffe34d 0 12px,
+      #fbbf24 12px 24px
+    ) !important;
+}
+body.meme-mode .victory-text h2 {
+  font-family: 'Impact', 'Oswald', 'Anton', sans-serif;
+  font-size: clamp(28px, 4vw, 42px);
+  text-transform: uppercase;
+  color: #dc2626;
+  -webkit-text-stroke: 1.5px #0b0b0b;
+  text-shadow: 3px 3px 0 #0b0b0b;
+}
+body.meme-mode .victory-kicker {
+  background: #0b0b0b;
+  color: #ffe34d;
+  padding: 2px 8px;
+  font-family: 'Impact', sans-serif;
+  letter-spacing: 0.1em;
+}
+
+/* Empty-state cartoons get a chunky frame. */
+body.meme-mode .empty-state img {
+  border: 3px solid #0b0b0b;
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 #dc2626;
+}
+
+/* Avatars in meme mode get a sticker vibe. */
+body.meme-mode .team-avatar,
+body.meme-mode .team-avatar.team-avatar-photo {
+  border: 2.5px solid #0b0b0b;
+  box-shadow: 2px 2px 0 #0b0b0b;
+}
+
+/* Avatar edit badge stays visible on the brighter palette. */
+body.meme-mode .avatar-edit-badge {
+  background: #0b0b0b;
+  color: #ffe34d;
+  border-color: #ffe34d;
+}
+
+/* The scorer banner gets a "hot take" vibe. */
+body.meme-mode .scorer-banner.is-scorer {
+  background: #ffe34d !important;
+}
+body.meme-mode .scorer-banner.is-viewer {
+  background: #fef3c7 !important;
+}
+
+/* Scroll top links / page-actions */
+body.meme-mode .page-actions .btn {
+  background: #ffe34d;
+  color: #0b0b0b;
+}
+
+/* Form fields — stronger outlines, less rounded. */
+body.meme-mode .form-field input,
+body.meme-mode .form-field select,
+body.meme-mode .form-field textarea {
+  border: 2.5px solid #0b0b0b !important;
+  border-radius: 4px !important;
+  box-shadow: 2px 2px 0 #0b0b0b;
+}
+
+/* Run-grid: make buttons bigger in meme mode for dramatic taps. */
+body.meme-mode .run-grid .btn {
+  min-height: 64px;
+}
+
+/* Links inside prose get the highlighter effect. */
+body.meme-mode main a:not(.btn):not(.navbar-brand):not(.navbar-links a) {
+  background: linear-gradient(to bottom, transparent 60%, #ffe34d 60%);
+  color: #0b0b0b;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .meme-toggle-label {
+    display: none;
+  }
+  body.meme-mode .page-banner-title {
+    font-size: 30px;
+  }
+}

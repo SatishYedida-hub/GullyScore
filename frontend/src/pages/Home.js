@@ -7,6 +7,8 @@ import {
   Stumps,
   Trophy,
 } from '../components/CricketIcons';
+import MemeCaption from '../components/MemeCaption';
+import { useMemeMode } from '../utils/theme';
 
 const TILES = [
   {
@@ -47,36 +49,49 @@ const TILES = [
 ];
 
 function Home() {
+  const [memeOn] = useMemeMode();
+
   return (
     <section className="page home">
+      <MemeCaption captionKey="home" />
       <div className="hero">
         <div className="hero-text">
           <span className="hero-kicker">
-            <CricketBall size={18} /> Score like the pros
+            <CricketBall size={18} />{' '}
+            {memeOn ? 'Gully lo direct entry!' : 'Score like the pros'}
           </span>
-          <h1>Welcome to GullyScore</h1>
+          <h1>{memeOn ? 'GullyScore — Street Cricket Ki King' : 'Welcome to GullyScore'}</h1>
           <p className="hero-sub">
-            Ball-by-ball scoring for your gully cricket matches — two innings,
-            player stats, wickets, extras and full scorecards.
+            {memeOn
+              ? 'Ball-by-ball score cheppandi. Two innings, player stats, extras — antha ready. Toss gelisthe chalu, match start cheseddham.'
+              : 'Ball-by-ball scoring for your gully cricket matches — two innings, player stats, wickets, extras and full scorecards.'}
           </p>
           <div className="hero-actions">
             <Link to="/matches/new" className="btn primary">
-              Start a match
+              {memeOn ? 'Match start cheyyi!' : 'Start a match'}
             </Link>
             <Link to="/teams" className="btn">
-              Manage teams
+              {memeOn ? 'Teams chudandi' : 'Manage teams'}
             </Link>
           </div>
         </div>
         <div className="hero-art">
           <img
-            src="/images/cricket-hero.png"
-            alt="Cricket stumps, bat and ball on a sunset field"
+            src={
+              memeOn ? '/images/memes/meme-hero.png' : '/images/cricket-hero.png'
+            }
+            alt={
+              memeOn
+                ? 'Cartoon gully cricketer mid-shot'
+                : 'Cricket stumps, bat and ball on a sunset field'
+            }
             className="hero-image"
           />
-          <div className="hero-ball-float" aria-hidden="true">
-            <CricketBall size={48} />
-          </div>
+          {!memeOn && (
+            <div className="hero-ball-float" aria-hidden="true">
+              <CricketBall size={48} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -97,32 +112,62 @@ function Home() {
       <div className="feature-strip">
         <div className="feature-card">
           <img
-            src="/images/cricket-action.png"
-            alt="Batsman playing a cover drive"
+            src={
+              memeOn
+                ? '/images/memes/meme-out.png'
+                : '/images/cricket-action.png'
+            }
+            alt={
+              memeOn
+                ? 'Cartoon umpire raising finger'
+                : 'Batsman playing a cover drive'
+            }
             className="feature-card-image"
           />
           <div className="feature-card-body">
-            <span className="feature-card-kicker">Live scoring</span>
-            <h3>Ball-by-ball, just like the pros</h3>
+            <span className="feature-card-kicker">
+              {memeOn ? 'OUT ante OUT!' : 'Live scoring'}
+            </span>
+            <h3>
+              {memeOn
+                ? 'Prati ball ki react cheyyi'
+                : 'Ball-by-ball, just like the pros'}
+            </h3>
             <p className="muted">
-              Tap runs, wickets and extras. Strike rotates automatically, overs
-              flip the bowler, and the scorecard keeps up in real time.
+              {memeOn
+                ? 'Run button press cheyyi, wicket ki OUT kottu, extras appudu wide ani chepp — scorecard ready chestundi.'
+                : 'Tap runs, wickets and extras. Strike rotates automatically, overs flip the bowler, and the scorecard keeps up in real time.'}
             </p>
           </div>
         </div>
 
         <div className="feature-card">
           <img
-            src="/images/cricket-victory.png"
-            alt="Gold trophy with fireworks"
+            src={
+              memeOn
+                ? '/images/memes/meme-celebrate.png'
+                : '/images/cricket-victory.png'
+            }
+            alt={
+              memeOn
+                ? 'Cartoon fans celebrating a win'
+                : 'Gold trophy with fireworks'
+            }
             className="feature-card-image"
           />
           <div className="feature-card-body">
-            <span className="feature-card-kicker">Two innings</span>
-            <h3>Full chases, full scorecards</h3>
+            <span className="feature-card-kicker">
+              {memeOn ? 'Chase complete!' : 'Two innings'}
+            </span>
+            <h3>
+              {memeOn
+                ? 'Idhe ra assalu game!'
+                : 'Full chases, full scorecards'}
+            </h3>
             <p className="muted">
-              Complete second innings with targets, run-rate tracking, results
-              and match-winning moments saved to your history.
+              {memeOn
+                ? 'Target ichi, over-by-over chase track cheyyi — final ball drama kuda capture avthadi.'
+                : 'Complete second innings with targets, run-rate tracking, results and match-winning moments saved to your history.'}
             </p>
           </div>
         </div>

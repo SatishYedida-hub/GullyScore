@@ -91,6 +91,7 @@ function Players() {
       title="Player Records"
       subtitle="Career batting and bowling stats aggregated across every match played."
       tone="tone-orange"
+      memeKey="recordsList"
     />
   );
 

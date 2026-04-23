@@ -139,6 +139,7 @@ function Roster() {
       title="Players"
       subtitle="One place for all your players. Add them once, then drop them into any team."
       tone="tone-green"
+      memeKey="roster"
     />
   );
 
