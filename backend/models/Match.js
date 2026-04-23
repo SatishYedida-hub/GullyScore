@@ -82,6 +82,11 @@ const matchSchema = new mongoose.Schema(
     target: { type: Number, default: null },
     result: { type: String, default: '' },
 
+    // Shared secret that authorizes write operations (scoring, setup, undo,
+    // delete, transfer). Hidden from default queries; only read when
+    // explicitly selected.
+    scorerToken: { type: String, default: '', select: false },
+
     history: {
       type: [
         {

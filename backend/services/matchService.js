@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const Match = require('../models/Match');
 const Team = require('../models/Team');
 const { ballsToOvers, BALLS_PER_OVER } = require('../utils/cricket');
+
+// 6 random bytes → ~8 base64url characters. Easy for humans to copy, hard
+// enough to guess for gully-cricket purposes.
+const generateScorerToken = () =>
+  crypto.randomBytes(6).toString('base64url');
 
 const MAX_WICKETS = 10;
 
@@ -37,6 +43,8 @@ const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
   const aDoc = teams.find((t) => t.name === teamA);
   const bDoc = teams.find((t) => t.name === teamB);
 
+  const scorerToken = generateScorerToken();
+
   const match = new Match({
     teamA,
     teamB,
@@ -44,8 +52,12 @@ const createMatch = async ({ teamA, teamB, overs, battingTeam = 'teamA' }) => {
     teamBPlayers: bDoc ? bDoc.players : [],
     overs,
     battingTeam,
+    scorerToken,
   });
-  return match.save();
+  const saved = await match.save();
+  // Return the token alongside the match so the creator can save/share it.
+  // The token is NOT part of the saved match projection (select:false).
+  return { match: saved, scorerToken };
 };
 
 const getAllMatches = async () => Match.find().sort({ createdAt: -1 });
@@ -57,7 +69,28 @@ const getMatchById = async (id) => {
 
 const loadForWrite = async (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
-  return Match.findById(id).select('+history');
+  return Match.findById(id).select('+history +scorerToken');
+};
+
+/**
+ * True if the provided token matches the match's scorer lock, OR if the
+ * match has no scorer lock yet (legacy / upgrade-in-place matches).
+ */
+const isScorerToken = (match, providedToken) => {
+  if (!match.scorerToken) return true;
+  if (!providedToken) return false;
+  return providedToken === match.scorerToken;
+};
+
+/**
+ * Rotate the scorer token and return the new one. Callers must have already
+ * verified the current holder.
+ */
+const rotateScorerToken = async (match) => {
+  const newToken = generateScorerToken();
+  match.scorerToken = newToken;
+  await match.save();
+  return newToken;
 };
 
 const HISTORY_LIMIT = 30;
@@ -327,5 +360,7 @@ module.exports = {
   getBattingTeamPlayers,
   getBowlingTeamPlayers,
   currentInnings,
+  isScorerToken,
+  rotateScorerToken,
   MAX_WICKETS,
 };

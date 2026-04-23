@@ -14,7 +14,12 @@ const corsOrigin = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
   : '*';
 
-app.use(cors({ origin: corsOrigin }));
+app.use(
+  cors({
+    origin: corsOrigin,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Scorer-Token'],
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));

@@ -7,10 +7,12 @@ import {
   getMatchById,
   newBatsman as apiNewBatsman,
   newBowler as apiNewBowler,
+  transferScorer as apiTransferScorer,
   undoLastAction,
   updateScore,
 } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
+import { clearScorerToken, setScorerToken } from '../utils/scorerToken';
 
 const RUN_BUTTONS = [0, 1, 2, 3, 4, 6];
 
@@ -51,6 +53,7 @@ function LiveScore() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [canUndo, setCanUndo] = useState(false);
+  const [isScorer, setIsScorer] = useState(false);
 
   const [wicketOpen, setWicketOpen] = useState(false);
   const [howOut, setHowOut] = useState(HOW_OUT_OPTIONS[0]);
@@ -59,11 +62,24 @@ function LiveScore() {
   const [newBatsmanSelection, setNewBatsmanSelection] = useState('');
   const [newBowlerSelection, setNewBowlerSelection] = useState('');
 
+  // Take-over flow: a viewer who has been given the key pastes it here to
+  // claim scorer access on this device.
+  const [takeoverInput, setTakeoverInput] = useState('');
+  const [takeoverError, setTakeoverError] = useState(null);
+
+  // Transfer flow: current scorer rotates the key; we show the new key once
+  // so they can share it with the next scorer.
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferStage, setTransferStage] = useState('confirm'); // 'confirm' | 'done'
+  const [newToken, setNewToken] = useState('');
+  const [copied, setCopied] = useState(false);
+
   const load = useCallback(async () => {
     try {
       const { data } = await getMatchById(id);
       setMatch(data.data);
       setCanUndo(!!data.canUndo);
+      setIsScorer(!!data.isScorer);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -151,6 +167,23 @@ function LiveScore() {
     ? Math.max(0, match.overs * 6 - (inn.score?.balls ?? 0))
     : null;
 
+  const handleWriteError = (err) => {
+    // A 403 means our saved key no longer matches — most often because the
+    // scorer transferred the key to someone else. Drop the stale key and
+    // refresh so the UI flips to read-only.
+    if (err?.response?.status === 403) {
+      clearScorerToken(id);
+      setIsScorer(false);
+      setError(
+        getErrorMessage(err) ||
+          'You are no longer the scorer. Ask the new scorer for the key.'
+      );
+      load();
+      return;
+    }
+    setError(getErrorMessage(err));
+  };
+
   const submit = async (payload) => {
     setError(null);
     try {
@@ -159,7 +192,7 @@ function LiveScore() {
       setMatch(data.data);
       setCanUndo(!!data.canUndo);
     } catch (err) {
-      setError(getErrorMessage(err));
+      handleWriteError(err);
     } finally {
       setBusy(false);
     }
@@ -173,7 +206,7 @@ function LiveScore() {
       setMatch(data.data);
       setCanUndo(!!data.canUndo);
     } catch (err) {
-      setError(getErrorMessage(err));
+      handleWriteError(err);
     } finally {
       setBusy(false);
     }
@@ -203,7 +236,7 @@ function LiveScore() {
       setCanUndo(!!data.canUndo);
       setNewBatsmanSelection('');
     } catch (err) {
-      setError(getErrorMessage(err));
+      handleWriteError(err);
     } finally {
       setBusy(false);
     }
@@ -222,10 +255,95 @@ function LiveScore() {
       setCanUndo(!!data.canUndo);
       setNewBowlerSelection('');
     } catch (err) {
-      setError(getErrorMessage(err));
+      handleWriteError(err);
     } finally {
       setBusy(false);
     }
+  };
+
+  const submitTakeover = async (e) => {
+    e.preventDefault();
+    setTakeoverError(null);
+    const token = takeoverInput.trim();
+    if (!token) {
+      setTakeoverError('Paste the scorer key to take over.');
+      return;
+    }
+    // Save the pasted key and re-fetch the match: if it is correct, the
+    // server responds with isScorer=true and the UI flips to write mode.
+    setScorerToken(id, token);
+    try {
+      const { data } = await getMatchById(id);
+      if (!data.isScorer) {
+        clearScorerToken(id);
+        setTakeoverError("That key doesn't match this match.");
+        return;
+      }
+      setMatch(data.data);
+      setCanUndo(!!data.canUndo);
+      setIsScorer(true);
+      setTakeoverInput('');
+    } catch (err) {
+      clearScorerToken(id);
+      setTakeoverError(getErrorMessage(err));
+    }
+  };
+
+  const openTransfer = () => {
+    setTransferOpen(true);
+    setTransferStage('confirm');
+    setNewToken('');
+    setCopied(false);
+  };
+
+  const confirmTransfer = async () => {
+    setError(null);
+    try {
+      setBusy(true);
+      const { data } = await apiTransferScorer(id);
+      if (data.scorerToken) {
+        // The freshly rotated key MUST be saved locally: the old one no
+        // longer works, so this device would otherwise lock itself out.
+        setScorerToken(id, data.scorerToken);
+        setNewToken(data.scorerToken);
+      }
+      setTransferStage('done');
+    } catch (err) {
+      handleWriteError(err);
+      setTransferOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyNewToken = async () => {
+    if (!newToken) return;
+    try {
+      await navigator.clipboard.writeText(newToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_) {
+      setCopied(false);
+    }
+  };
+
+  // Handing off: clear the token from this device so the receiver alone has
+  // scoring access. The server doesn't care which device holds the key — it
+  // only checks that the key itself matches.
+  const handOffFinish = () => {
+    clearScorerToken(id);
+    setIsScorer(false);
+    setTransferOpen(false);
+    setNewToken('');
+    load();
+  };
+
+  // Keep-both finish: both the current device and whoever we share the new
+  // key with can score. Practical if the original scorer also wants to keep
+  // scoring from their phone.
+  const keepAndFinish = () => {
+    setTransferOpen(false);
+    setNewToken('');
   };
 
   return (
@@ -250,6 +368,58 @@ function LiveScore() {
         </div>
         <span className={`badge badge-${match.status}`}>{match.status}</span>
       </header>
+
+      {!isCompleted && (
+        <div className={`scorer-banner ${isScorer ? 'is-scorer' : 'is-viewer'}`}>
+          {isScorer ? (
+            <>
+              <div className="scorer-banner-text">
+                <span className="scorer-dot" aria-hidden>●</span>
+                <div>
+                  <strong>You are the scorer</strong>
+                  <span className="muted small">
+                    Only you can update this match from this device.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={openTransfer}
+                disabled={busy}
+              >
+                Transfer scorer
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="scorer-banner-text">
+                <span className="scorer-dot viewer-dot" aria-hidden>●</span>
+                <div>
+                  <strong>View-only</strong>
+                  <span className="muted small">
+                    Enter the scorer key to take over scoring on this device.
+                  </span>
+                </div>
+              </div>
+              <form className="takeover-form" onSubmit={submitTakeover}>
+                <input
+                  type="text"
+                  placeholder="Scorer key"
+                  value={takeoverInput}
+                  onChange={(e) => setTakeoverInput(e.target.value)}
+                />
+                <button type="submit" className="btn primary">
+                  Take over
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+      {!isCompleted && takeoverError && (
+        <p className="form-message error">{takeoverError}</p>
+      )}
 
       {isCompleted && (
         <div className="victory-banner">
@@ -412,20 +582,22 @@ function LiveScore() {
         </div>
       </div>
 
-      <div className="undo-row">
-        <button
-          className="btn link undo-btn"
-          disabled={busy || !canUndo}
-          onClick={submitUndo}
-          title={canUndo ? 'Undo the last action' : 'Nothing to undo'}
-        >
-          ↶ Undo last action
-        </button>
-      </div>
+      {isScorer && !isCompleted && (
+        <div className="undo-row">
+          <button
+            className="btn link undo-btn"
+            disabled={busy || !canUndo}
+            onClick={submitUndo}
+            title={canUndo ? 'Undo the last action' : 'Nothing to undo'}
+          >
+            ↶ Undo last action
+          </button>
+        </div>
+      )}
 
       {error && <p className="form-message error">{error}</p>}
 
-      {needsBatsman && !isCompleted && (
+      {isScorer && needsBatsman && !isCompleted && (
         <div className="panel action-required">
           <h3 className="panel-title">New batsman required</h3>
           <div className="inline-row">
@@ -449,7 +621,7 @@ function LiveScore() {
         </div>
       )}
 
-      {needsBowler && !isCompleted && (
+      {isScorer && needsBowler && !isCompleted && (
         <div className="panel action-required">
           <h3 className="panel-title">Select next bowler</h3>
           <p className="muted small">
@@ -476,7 +648,7 @@ function LiveScore() {
         </div>
       )}
 
-      {!scoringLocked && (
+      {isScorer && !scoringLocked && (
         <div className="score-controls">
           <div className="control-group">
             <h3>Runs</h3>
@@ -535,6 +707,88 @@ function LiveScore() {
         <Link to={`/matches/${id}/scorecard`} className="btn">View Scorecard</Link>
         <Link to="/matches" className="btn link">Back to match history</Link>
       </div>
+
+      {transferOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={transferStage === 'done' ? keepAndFinish : () => setTransferOpen(false)}
+        >
+          <div
+            className="modal scorer-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {transferStage === 'confirm' ? (
+              <>
+                <h3>Transfer scoring access</h3>
+                <p className="muted small">
+                  We'll rotate the scorer key. Your current key will stop
+                  working and a brand-new key will be shown once — share it
+                  with the next scorer.
+                </p>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setTransferOpen(false)}
+                    disabled={busy}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={confirmTransfer}
+                    disabled={busy}
+                  >
+                    {busy ? 'Rotating…' : 'Generate new key'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>New scorer key</h3>
+                <p className="muted small">
+                  Share this with the next scorer. They can paste it into the
+                  <strong> Take over </strong> box on this page to start
+                  scoring.
+                </p>
+                <div className="scorer-token-box">
+                  <code className="scorer-token">{newToken || '—'}</code>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={copyNewToken}
+                    disabled={!newToken}
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <p className="muted small">
+                  This key is still saved on this device, so you can keep
+                  scoring here too. Hand off completely to remove it from
+                  this device.
+                </p>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handOffFinish}
+                  >
+                    Hand off (log me out of scoring)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={keepAndFinish}
+                  >
+                    Keep scoring here
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {wicketOpen && (
         <div className="modal-backdrop" onClick={() => setWicketOpen(false)}>

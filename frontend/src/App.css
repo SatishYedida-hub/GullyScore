@@ -2001,3 +2001,104 @@ fieldset.form-field {
     min-width: 0;
   }
 }
+
+/* Scorer access control ---------------------------------------------------- */
+
+.scorer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.scorer-banner.is-scorer {
+  background: var(--success-bg);
+  border-color: var(--success-text);
+}
+.scorer-banner.is-viewer {
+  background: rgba(148, 163, 184, 0.12);
+}
+.scorer-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.scorer-banner-text strong {
+  display: block;
+  line-height: 1.2;
+}
+.scorer-banner-text .small {
+  display: block;
+  line-height: 1.3;
+}
+.scorer-dot {
+  color: #16a34a;
+  font-size: 14px;
+  line-height: 1;
+}
+.scorer-dot.viewer-dot {
+  color: #94a3b8;
+}
+
+.takeover-form {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.takeover-form input {
+  flex: 1 1 160px;
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+.takeover-form input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.scorer-modal {
+  max-width: 460px;
+}
+.scorer-token-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+  padding: 12px;
+}
+.scorer-token {
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--primary);
+  word-break: break-all;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .scorer-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .takeover-form {
+    justify-content: stretch;
+  }
+}
+

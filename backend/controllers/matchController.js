@@ -13,7 +13,30 @@ const toResponse = (match) => {
   if (!match) return match;
   const obj = typeof match.toObject === 'function' ? match.toObject() : { ...match };
   delete obj.history;
+  delete obj.scorerToken;
   return obj;
+};
+
+// Clients send the scorer key either as `X-Scorer-Token` header or
+// (fallback) as `scorerToken` in the JSON body.
+const readScorerToken = (req) =>
+  req.get('x-scorer-token') ||
+  (req.body && typeof req.body.scorerToken === 'string'
+    ? req.body.scorerToken
+    : '');
+
+// Throws 403 if the caller is not the current scorer for this match.
+// Legacy matches without a token are allowed through (see
+// `matchService.isScorerToken`).
+const requireScorer = (match, req) => {
+  const token = readScorerToken(req);
+  if (!matchService.isScorerToken(match, token)) {
+    const err = new Error(
+      'Only the match scorer can perform this action. Ask them to transfer the scorer key to you.'
+    );
+    err.status = 403;
+    throw err;
+  }
 };
 
 exports.createMatch = async (req, res, next) => {
@@ -55,7 +78,7 @@ exports.createMatch = async (req, res, next) => {
       return next(httpError(400, `Team(s) not found: ${missing.join(', ')}`));
     }
 
-    const match = await matchService.createMatch({
+    const { match, scorerToken } = await matchService.createMatch({
       teamA: nameA,
       teamB: nameB,
       overs,
@@ -64,7 +87,10 @@ exports.createMatch = async (req, res, next) => {
 
     return res.status(201).json({
       message: 'Match created successfully',
-      data: match,
+      data: toResponse(match),
+      // Returned ONLY on creation; the caller must save it to keep scoring
+      // access. This is the only time the plain token is exposed.
+      scorerToken,
     });
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -92,7 +118,12 @@ exports.getMatchById = async (req, res, next) => {
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     const canUndo = (match.history || []).length > 0;
-    return res.status(200).json({ data: toResponse(match), canUndo });
+    // Tell the client whether this viewer currently holds the scorer key, so
+    // the UI can show/hide scoring controls without having to probe writes.
+    const isScorer = matchService.isScorerToken(match, readScorerToken(req));
+    return res
+      .status(200)
+      .json({ data: toResponse(match), canUndo, isScorer });
   } catch (error) {
     return next(error);
   }
@@ -101,8 +132,10 @@ exports.getMatchById = async (req, res, next) => {
 exports.deleteMatch = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const match = await matchService.getMatchById(id);
+    const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
 
     await matchService.deleteMatch(match);
     return res.status(200).json({
@@ -160,11 +193,13 @@ exports.setupMatch = async (req, res, next) => {
 
     const { striker, nonStriker, bowler } = req.body;
 
-    const match = await matchService.getMatchById(id);
+    const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'setup') {
       return next(httpError(400, 'Match has already been set up'));
     }
+
+    requireScorer(match, req);
 
     const playerError = validatePlayers(match, { striker, nonStriker, bowler });
     if (playerError) return next(httpError(400, playerError));
@@ -195,13 +230,15 @@ exports.setupInnings2 = async (req, res, next) => {
 
     const { striker, nonStriker, bowler } = req.body;
 
-    const match = await matchService.getMatchById(id);
+    const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
     if (match.status !== 'innings-break') {
       return next(
         httpError(400, 'Second innings can only be set up at innings break')
       );
     }
+
+    requireScorer(match, req);
 
     // After innings 1, batting team flips; service handles the actual swap.
     // Use a temp-swapped clone for validation.
@@ -270,6 +307,8 @@ exports.updateScore = async (req, res, next) => {
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
 
+    requireScorer(match, req);
+
     if (match.status === 'completed') {
       return next(httpError(400, 'Match is already completed'));
     }
@@ -331,6 +370,9 @@ exports.newBatsman = async (req, res, next) => {
 
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
+
     if (match.status !== 'live') {
       return next(httpError(400, 'Match is not live'));
     }
@@ -376,6 +418,9 @@ exports.newBowler = async (req, res, next) => {
 
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
+
     if (match.status !== 'live') {
       return next(httpError(400, 'Match is not live'));
     }
@@ -416,6 +461,8 @@ exports.undoLastAction = async (req, res, next) => {
     const match = await matchService.loadForWrite(id);
     if (!match) return next(httpError(404, 'Match not found'));
 
+    requireScorer(match, req);
+
     if (match.status === 'setup') {
       return next(httpError(400, 'Nothing to undo yet'));
     }
@@ -431,6 +478,29 @@ exports.undoLastAction = async (req, res, next) => {
     });
   } catch (error) {
     if (error.name === 'ValidationError') error.status = 400;
+    return next(error);
+  }
+};
+
+// Rotate the scorer key. Only the current holder can do this. After the
+// rotation, the previous key stops working and the response returns the new
+// key exactly once for the holder to share with the next scorer.
+exports.transferScorer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const match = await matchService.loadForWrite(id);
+    if (!match) return next(httpError(404, 'Match not found'));
+
+    requireScorer(match, req);
+
+    const newToken = await matchService.rotateScorerToken(match);
+    return res.status(200).json({
+      message: 'Scorer key rotated. Share the new key with the next scorer.',
+      data: { _id: match._id },
+      scorerToken: newToken,
+    });
+  } catch (error) {
     return next(error);
   }
 };

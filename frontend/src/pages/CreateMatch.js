@@ -7,6 +7,7 @@ import { CricketBat } from '../components/CricketIcons';
 import { getAllTeams } from '../services/teamService';
 import { createMatch } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
+import { setScorerToken } from '../utils/scorerToken';
 
 function CreateMatch() {
   const navigate = useNavigate();
@@ -18,6 +19,11 @@ function CreateMatch() {
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // When a match is created the backend returns a one-time scorer key. We
+  // show it in a confirmation modal so the creator can copy/share it before
+  // heading into setup.
+  const [newMatch, setNewMatch] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -59,12 +65,33 @@ function CreateMatch() {
         overs: Number(overs),
         battingTeam,
       });
-      navigate(`/matches/${data.data._id}/setup`);
+      // Persist the scorer key for this device immediately so later requests
+      // (setup, score, etc.) are authorized without any extra user action.
+      if (data.scorerToken) {
+        setScorerToken(data.data._id, data.scorerToken);
+      }
+      setNewMatch({ id: data.data._id, token: data.scorerToken || '' });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const copyToken = async () => {
+    if (!newMatch?.token) return;
+    try {
+      await navigator.clipboard.writeText(newMatch.token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_) {
+      setCopied(false);
+    }
+  };
+
+  const continueToSetup = () => {
+    if (!newMatch) return;
+    navigate(`/matches/${newMatch.id}/setup`);
   };
 
   const banner = (
@@ -217,6 +244,57 @@ function CreateMatch() {
 
         {error && <p className="form-message error">{error}</p>}
       </form>
+
+      {newMatch && (
+        <div className="modal-backdrop" onClick={continueToSetup}>
+          <div
+            className="modal scorer-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Your scorer key</h3>
+            <p className="muted small">
+              Only the person who has this key can update the score. Save it
+              somewhere safe — you can later transfer it to another scorer from
+              the live score page.
+            </p>
+
+            {newMatch.token ? (
+              <>
+                <div className="scorer-token-box">
+                  <code className="scorer-token">{newMatch.token}</code>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={copyToken}
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <p className="muted small">
+                  We've already saved it on this device. If you close this
+                  browser without copying, you can still score from here — but
+                  keep a copy in case.
+                </p>
+              </>
+            ) : (
+              <p className="form-message error">
+                Unable to generate a scorer key. Anyone will be able to score
+                this match.
+              </p>
+            )}
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={continueToSetup}
+              >
+                Continue to setup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

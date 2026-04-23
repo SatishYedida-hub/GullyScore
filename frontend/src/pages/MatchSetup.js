@@ -10,6 +10,7 @@ import {
   setupInnings2,
 } from '../services/matchService';
 import { getErrorMessage } from '../services/api';
+import { clearScorerToken, setScorerToken } from '../utils/scorerToken';
 
 function MatchSetup() {
   const { id } = useParams();
@@ -19,15 +20,20 @@ function MatchSetup() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [isScorer, setIsScorer] = useState(false);
 
   const [striker, setStriker] = useState('');
   const [nonStriker, setNonStriker] = useState('');
   const [bowler, setBowler] = useState('');
 
+  const [takeoverInput, setTakeoverInput] = useState('');
+  const [takeoverError, setTakeoverError] = useState(null);
+
   const fetchMatch = useCallback(async () => {
     try {
       const { data } = await getMatchById(id);
       setMatch(data.data);
+      setIsScorer(!!data.isScorer);
       if (data.data.status === 'live' || data.data.status === 'completed') {
         navigate(`/matches/${id}/live`, { replace: true });
       }
@@ -89,6 +95,96 @@ function MatchSetup() {
           Both teams need players before the match can start. Add players on the
           teams and create a new match.
         </p>
+      </section>
+    );
+  }
+
+  const submitTakeover = async (e) => {
+    e.preventDefault();
+    setTakeoverError(null);
+    const token = takeoverInput.trim();
+    if (!token) {
+      setTakeoverError('Paste the scorer key to take over.');
+      return;
+    }
+    setScorerToken(id, token);
+    try {
+      const { data } = await getMatchById(id);
+      if (!data.isScorer) {
+        clearScorerToken(id);
+        setTakeoverError("That key doesn't match this match.");
+        return;
+      }
+      setMatch(data.data);
+      setIsScorer(true);
+      setTakeoverInput('');
+    } catch (err) {
+      clearScorerToken(id);
+      setTakeoverError(getErrorMessage(err));
+    }
+  };
+
+  if (!isScorer) {
+    return (
+      <section className="page match-setup">
+        <PageBanner
+          image="/images/cricket-hero.png"
+          kicker={
+            <>
+              <CricketBall size={16} /> Waiting to start
+            </>
+          }
+          title="Only the scorer can set up this match"
+          subtitle={`${match.teamA} vs ${match.teamB} — ${match.overs} overs`}
+          tone="tone-blue"
+        />
+        <div className="card-form">
+          <p className="muted">
+            This match has a scorer key. Only the person who created the match
+            (or whoever they transferred the key to) can pick the openers and
+            bowler.
+          </p>
+
+          <form
+            className="scorer-banner is-viewer"
+            onSubmit={submitTakeover}
+            style={{ marginTop: 12 }}
+          >
+            <div className="scorer-banner-text">
+              <span className="scorer-dot viewer-dot" aria-hidden>●</span>
+              <div>
+                <strong>Got the scorer key?</strong>
+                <span className="muted small">
+                  Paste it here to take over scoring.
+                </span>
+              </div>
+            </div>
+            <div className="takeover-form">
+              <input
+                type="text"
+                placeholder="Scorer key"
+                value={takeoverInput}
+                onChange={(e) => setTakeoverInput(e.target.value)}
+              />
+              <button type="submit" className="btn primary">
+                Take over
+              </button>
+            </div>
+          </form>
+          {takeoverError && (
+            <p className="form-message error">{takeoverError}</p>
+          )}
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => navigate('/matches')}
+            >
+              Back to match history
+            </button>
+          </div>
+        </div>
       </section>
     );
   }
