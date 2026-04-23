@@ -159,7 +159,9 @@ function MatchSetup() {
           }
           title="Only the scorer can set up this match"
           subtitle={`${match.teamA} vs ${match.teamB} — ${
-            isTestMatch ? 'Test match' : `${match.overs} overs`
+            isTestMatch
+              ? `Test${match.overs ? ` · ${match.overs} overs/inn` : ''}`
+              : `${match.overs} overs`
           }`}
           tone="tone-blue"
         />
@@ -268,7 +270,9 @@ function MatchSetup() {
     ? `End of innings ${inningsCount}`
     : 'Innings break';
   const bannerSubtitle = isTestMatch
-    ? `Test match — ${battingTeamName} to bat${isInningsBreak ? ' next.' : ' first.'}`
+    ? `${
+        match.overs ? `Test · ${match.overs} overs per innings` : 'Test match'
+      } — ${battingTeamName} to bat${isInningsBreak ? ' next.' : ' first.'}`
     : `${match.overs} overs match — ${battingTeamName} to bat${
         isInningsBreak ? ' now.' : ' first.'
       }`;

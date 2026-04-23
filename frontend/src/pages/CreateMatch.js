@@ -60,11 +60,16 @@ function CreateMatch() {
 
     try {
       setSubmitting(true);
+      // Limited always sends overs. Test sends it only if the scorer set a
+      // positive cap (per-innings); blank/0 means "no cap" (classic test).
+      const oversNum = Number(overs);
+      const hasOvers = overs !== '' && Number.isFinite(oversNum) && oversNum > 0;
+
       const { data } = await createMatch({
         teamA,
         teamB,
         format,
-        ...(format === 'limited' ? { overs: Number(overs) } : {}),
+        ...(format === 'limited' || hasOvers ? { overs: oversNum } : {}),
         battingTeam,
       });
       // Persist the scorer key for this device immediately so later requests
@@ -263,19 +268,28 @@ function CreateMatch() {
           </div>
         </fieldset>
 
-        {format === 'limited' && (
-          <label className="form-field">
-            <span>Overs</span>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={overs}
-              onChange={(e) => setOvers(e.target.value)}
-              required
-            />
-          </label>
-        )}
+        <label className="form-field">
+          <span>
+            {format === 'test' ? 'Overs per innings (optional)' : 'Overs'}
+          </span>
+          <input
+            type="number"
+            min={format === 'limited' ? 1 : 0}
+            max={format === 'test' ? 200 : 50}
+            value={overs}
+            onChange={(e) => setOvers(e.target.value)}
+            required={format === 'limited'}
+            placeholder={
+              format === 'test' ? 'Leave blank for no cap' : ''
+            }
+          />
+          {format === 'test' && (
+            <span className="muted small">
+              Amateur/timed tests often cap each innings. Leave this empty
+              for a classic test with no overs limit.
+            </span>
+          )}
+        </label>
 
         <div className="form-actions">
           <button type="submit" className="btn primary" disabled={submitting}>

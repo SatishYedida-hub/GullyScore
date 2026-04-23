@@ -177,7 +177,7 @@ function MatchHistory() {
                 {innings.length === 0 ? (
                   <span className="muted small">
                     {m.format === 'test'
-                      ? 'Test · not started'
+                      ? `Test${m.overs ? ` · ${m.overs} overs/inn` : ''} · not started`
                       : `${m.overs} overs · not started`}
                   </span>
                 ) : (
@@ -198,7 +198,9 @@ function MatchHistory() {
               <div className="match-list-meta">
                 <span className="muted small">
                   {m.format === 'test'
-                    ? 'Test match'
+                    ? m.overs
+                      ? `Test · ${m.overs} overs per innings`
+                      : 'Test match'
                     : `${m.overs} overs match`}
                 </span>
                 <div className="match-list-actions">

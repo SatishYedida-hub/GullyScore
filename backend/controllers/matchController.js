@@ -62,10 +62,12 @@ exports.createMatch = async (req, res, next) => {
       return next(httpError(400, "format must be 'limited' or 'test'"));
     }
 
-    if (fmt === 'limited') {
-      if (overs === undefined) {
-        return next(httpError(400, 'overs is required for limited matches'));
-      }
+    // Limited requires an overs-per-side cap. Test accepts an optional
+    // per-innings cap (for timed/amateur tests) and uses no cap otherwise.
+    if (fmt === 'limited' && overs === undefined) {
+      return next(httpError(400, 'overs is required for limited matches'));
+    }
+    if (overs !== undefined && overs !== null && overs !== '') {
       if (typeof overs !== 'number' || !Number.isFinite(overs) || overs <= 0) {
         return next(httpError(400, 'overs must be a positive number'));
       }
@@ -86,10 +88,16 @@ exports.createMatch = async (req, res, next) => {
       return next(httpError(400, `Team(s) not found: ${missing.join(', ')}`));
     }
 
+    // Normalize: empty-string / null from the client → undefined (no cap).
+    const oversValue =
+      overs === undefined || overs === null || overs === ''
+        ? undefined
+        : overs;
+
     const { match, scorerToken } = await matchService.createMatch({
       teamA: nameA,
       teamB: nameB,
-      overs: fmt === 'test' ? undefined : overs,
+      overs: oversValue,
       battingTeam: battingTeam || 'teamA',
       format: fmt,
     });

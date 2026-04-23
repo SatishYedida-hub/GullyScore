@@ -167,6 +167,9 @@ function LiveScore() {
 
   const isTestMatch = match.format === 'test';
   const maxInnCount = isTestMatch ? 4 : 2;
+  // Overs may be set on either format: a per-side cap for limited and an
+  // optional per-innings cap for timed/amateur tests.
+  const hasOversCap = typeof match.overs === 'number' && match.overs > 0;
   // Chase innings = last one: innings 2 for limited, innings 4 for test.
   const isChaseInnings = inn && inn.number === maxInnCount;
   const runsNeeded =
@@ -174,7 +177,7 @@ function LiveScore() {
       ? Math.max(0, match.target - (inn.score?.runs ?? 0))
       : null;
   const ballsRemaining =
-    isChaseInnings && !isTestMatch && match.overs
+    isChaseInnings && hasOversCap
       ? Math.max(0, match.overs * 6 - (inn.score?.balls ?? 0))
       : null;
 
@@ -406,7 +409,9 @@ function LiveScore() {
           </div>
           <p className="match-meta">
             {isTestMatch
-              ? `Test · Innings ${inn?.number ?? '–'} of 4`
+              ? `Test${
+                  hasOversCap ? ` · ${match.overs} overs/inn` : ''
+                } · Innings ${inn?.number ?? '–'} of 4`
               : `${match.overs} overs · Innings ${inn?.number ?? '–'}`}{' '}
             · <strong>{battingTeamName}</strong> batting
           </p>
@@ -520,7 +525,7 @@ function LiveScore() {
             {formatOvers(inn?.score?.overs)}
           </span>
           <span className="score-overs-label">
-            {isTestMatch ? 'overs bowled' : `of ${match.overs} overs`}
+            {hasOversCap ? `of ${match.overs} overs` : 'overs bowled'}
           </span>
         </div>
       </div>

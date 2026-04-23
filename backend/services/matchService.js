@@ -73,8 +73,9 @@ const createMatch = async ({
     teamAPhoto: aDoc ? aDoc.photo || '' : '',
     teamBPhoto: bDoc ? bDoc.photo || '' : '',
     format,
-    // Test matches have no overs cap; ignore whatever was passed.
-    overs: format === 'test' ? undefined : overs,
+    // For limited matches this is the per-side cap; for test matches it is
+    // an optional per-innings cap (timed/amateur tests). `undefined` = no cap.
+    overs,
     battingTeam,
     scorerToken,
   });
@@ -302,10 +303,15 @@ const computeResult = (match, inn) => {
         wicketsRemaining === 1 ? '' : 's'
       }`;
     }
-    // All-out before reaching the target.
-    const diff = target - 1 - inn.score.runs;
-    if (diff === 0) return 'Match tied';
-    return `${otherName} won by ${diff} run${diff === 1 ? '' : 's'}`;
+    const allOut = inn.score.wickets >= MAX_WICKETS;
+    if (allOut) {
+      const diff = target - 1 - inn.score.runs;
+      if (diff === 0) return 'Match tied';
+      return `${otherName} won by ${diff} run${diff === 1 ? '' : 's'}`;
+    }
+    // Overs ran out (timed test) or innings was declared before chasing —
+    // standard test-cricket rule: the match is drawn.
+    return 'Match drawn';
   }
 
   // Limited-overs: decided at end of innings 2.
@@ -455,9 +461,9 @@ const applyScoreUpdate = async (match, { runs, wicket, extra, howOut }) => {
   }
 
   const allOut = inn.score.wickets >= MAX_WICKETS;
-  // Test cricket has no overs cap; only limited formats are time-bound.
+  // Limited: overs cap applies per side. Test: applies per innings when
+  // the match was created with a cap (timed/amateur tests).
   const oversDone =
-    !isTest(match) &&
     typeof match.overs === 'number' &&
     inn.score.balls >= match.overs * BALLS_PER_OVER;
   // Chase target applies to inn 2 in limited and inn 4 in test.
