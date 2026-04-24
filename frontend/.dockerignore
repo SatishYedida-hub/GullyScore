@@ -1,0 +1,17 @@
+node_modules
+build
+npm-debug.log
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+Dockerfile
+.dockerignore
+README.md
+*.md
+coverage
+.vscode
+.idea
+.DS_Store
+Thumbs.db

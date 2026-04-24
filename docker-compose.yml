@@ -1,0 +1,60 @@
+# Local end-to-end stack for testing the container images before you push
+# them to ECR. Brings up MongoDB, the backend API, and the nginx-served
+# frontend in one go. Usage:
+#
+#   docker compose up --build
+#
+# Open http://localhost:8080 in a browser.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: gullyscore-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    image: gullyscore-backend:dev
+    container_name: gullyscore-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      MONGO_URI: mongodb://mongo:27017/gullyscore
+      CORS_ORIGIN: "http://localhost:8080"
+      # Flip the admin lock on by setting a value here; leave empty to
+      # keep destructive routes open (useful for local testing).
+      ADMIN_TOKEN: ""
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The frontend calls the backend via nginx's /api proxy (see
+        # frontend/nginx.conf), so the bundle just needs a relative URL.
+        REACT_APP_API_URL: /api
+    image: gullyscore-frontend:dev
+    container_name: gullyscore-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:

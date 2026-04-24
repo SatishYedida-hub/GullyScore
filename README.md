@@ -68,6 +68,17 @@ npm start
 
 The React app will start on `http://localhost:3000` and proxy API calls to the backend.
 
+## Deploying
+
+Two deployment options are supported:
+
+1. **Render (free tier, dead simple)** — see below.
+2. **AWS (EKS + Jenkins + Docker)** — for the container / Kubernetes
+   workflow. Full walkthrough in
+   [`docs/DEPLOYMENT-AWS.md`](docs/DEPLOYMENT-AWS.md). Key files:
+   `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`,
+   `k8s/*.yaml`, `Jenkinsfile`, `scripts/*.sh`.
+
 ## Deploying to Render
 
 The repo ships with a `render.yaml` Blueprint that provisions **two services**

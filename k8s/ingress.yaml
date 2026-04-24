@@ -1,0 +1,61 @@
+# ALB-backed Ingress for AWS. Requires the AWS Load Balancer Controller
+# to be installed in the cluster (it converts this Ingress into a real
+# ALB + target groups). See docs/DEPLOYMENT-AWS.md for install steps.
+#
+# Path-based routing:
+#   /api/*  -> gullyscore-backend:5000
+#   /*      -> gullyscore-frontend:80
+#
+# If you're NOT using the ALB controller (e.g. you're on a bare cluster
+# with the nginx ingress controller instead), delete the AWS-specific
+# annotations and set `ingressClassName: nginx`.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gullyscore
+  namespace: gullyscore
+  labels:
+    app.kubernetes.io/name: gullyscore
+  annotations:
+    # ---- AWS Load Balancer Controller annotations ----
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: gullyscore
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # Uncomment these two lines once you have an ACM cert for your domain:
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80},{"HTTPS": 443}]'
+    # alb.ingress.kubernetes.io/certificate-arn: <CERT_ARN>
+    # Uncomment to redirect all HTTP -> HTTPS once TLS is on:
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/group.name: gullyscore
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gullyscore-backend
+                port:
+                  number: 5000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: gullyscore-backend
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gullyscore-frontend
+                port:
+                  number: 80

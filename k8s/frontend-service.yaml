@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gullyscore-frontend
+  namespace: gullyscore
+  labels:
+    app.kubernetes.io/name: gullyscore-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gullyscore-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

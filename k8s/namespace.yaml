@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gullyscore
+  labels:
+    app.kubernetes.io/name: gullyscore
+    app.kubernetes.io/part-of: gullyscore
